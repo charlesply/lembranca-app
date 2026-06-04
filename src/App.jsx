@@ -1015,6 +1015,27 @@ function PixPaymentModal({ open, onClose, planKey = 'musica', orderId, honoreeNa
     }
   }
 
+  // Polling do status do pagamento (PIX AbacatePay).
+  // No step 'pay': cliente tá com o QR aberto — checamos /api/pay/status
+  // a cada 4s. Quando webhook AbacatePay confirma → status='paid' → success.
+  useEffect(() => {
+    if (!open || step !== 'pay' || !orderId) return
+    let active = true
+    const tick = async () => {
+      try {
+        const r = await fetch(`${API_URL}/api/pay/status?orderId=${encodeURIComponent(orderId)}`)
+        const j = await r.json()
+        if (!active) return
+        if (j?.paid) {
+          setStep('success')
+          try { onPaid && onPaid(orderId, { auto_approved: true, abacate: true }) } catch (_) {}
+        }
+      } catch (_) {}
+    }
+    const id = setInterval(tick, 4000)
+    return () => { active = false; clearInterval(id) }
+  }, [open, step, orderId, onPaid])
+
   // Polling do status enquanto está em revisão manual.
   // Quando o admin aprovar via WhatsApp, o backend marca paid_at e desbloqueia
   // sem o cliente precisar dar reload. Pára quando o modal fecha ou troca de step.
@@ -1084,19 +1105,43 @@ function PixPaymentModal({ open, onClose, planKey = 'musica', orderId, honoreeNa
   const mm = String(Math.floor(secsLeft / 60)).padStart(2, '0')
   const ss = String(secsLeft % 60).padStart(2, '0')
 
-  // Gera o BR Code PIX (memoizado por plan) — é o conteúdo do QR e
-  // também o que o botão "Copiar código" copia.
-  const brCode = useMemo(() => {
-    const txid = (orderId ? String(orderId).replace(/[^A-Za-z0-9]/g, '').slice(0, 25) : '***') || '***'
-    return pixBRCode({ key: PIX_KEY, amount: plan.amount, txid })
-  }, [plan.amount, orderId])
+  // PIX agora vem da AbacatePay (confirmação automática). brCode + QR PNG
+  // vêm do backend → cliente paga → webhook marca order como paid → app
+  // detecta via polling em /api/pay/status (já existente abaixo).
+  const [brCode, setBrCode] = useState('')
+  const [qrSrc, setQrSrc] = useState('')
+  const [payError, setPayError] = useState('')
+  const payRequestedRef = useRef(false)
+
+  useEffect(() => {
+    if (!open || !orderId || !plan?.amount) return
+    if (payRequestedRef.current) return
+    payRequestedRef.current = true
+    let cancelled = false
+    ;(async () => {
+      try {
+        const planKeyLocal = plan?.key || planKey
+        const r = await fetch(`${API_URL}/api/pay/create`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId, plan: planKeyLocal }),
+        })
+        const j = await r.json()
+        if (cancelled) return
+        if (!r.ok || !j?.brCode) {
+          setPayError(j?.error || 'Falha ao gerar PIX')
+          return
+        }
+        setBrCode(j.brCode)
+        setQrSrc(j.brCodeBase64 || '')
+      } catch (e) {
+        if (!cancelled) setPayError(e?.message || 'Erro de rede')
+      }
+    })()
+    return () => { cancelled = true }
+  }, [open, orderId, plan?.amount, plan?.key, planKey])
 
   if (!open) return null
-
-  // QR code gerado por serviço público codificando o BR Code completo.
-  // Assim, quem escaneia no app do banco já vê chave + valor + recebedor
-  // preenchidos — basta confirmar.
-  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=0&data=${encodeURIComponent(brCode)}`
 
   // Copia 100% UNIVERSAL — funciona em iOS Safari, Android Chrome, Samsung
   // Internet, Firefox, Edge, WebViews (Instagram, FB), browsers antigos.
