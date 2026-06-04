@@ -1667,7 +1667,7 @@ body {
   transition: background-color var(--c-t-fast), border-color var(--c-t-fast), color var(--c-t-fast);
 }
 
-/* MOBILE FIX (jun/2026): o logo "Historias Cantadas" em 20px era 213px,
+/* MOBILE FIX (jun/2026): o logo "Lembranca Cantada" em 20px era 213px,
    somado ao pill "Minhas Musicas" (131px) extrapolava o content area do
    header (342px em viewport 390). Resultado: o botao colava na borda
    direita ignorando o padding. Reduzo o logo no mobile (16px) pra caber. */
@@ -2414,7 +2414,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 
 /* ════════════════════════════════════════════════════════════
    Motion 2026 — shimmer + toast + a11y reduced-motion
-   (parte da especificação oficial do Histórias Cantadas DS)
+   (parte da especificação oficial do Lembrança Cantada DS)
    ════════════════════════════════════════════════════════════ */
 @keyframes c-shimmer {
   0%   { background-position: 100% 0; }

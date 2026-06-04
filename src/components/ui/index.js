@@ -1,5 +1,5 @@
 /* ============================================================
-   Histórias Cantadas · Design System (porta JS · React 19)
+   Lembrança Cantada · Design System (porta JS · React 19)
    ─────────────────────────────────────────────────────────
    Componentes prontos pra usar no app atual sem TypeScript.
    Cada um segue 1:1 a especificação do Portal DS (tokens da

@@ -1,4 +1,4 @@
-# 📁 Assets — Histórias Cantadas
+# 📁 Assets — Lembrança Cantada
 
 Suba aqui os vídeos e imagens do site. Depois é só me avisar que eu troco cada
 placeholder (caixa tracejada) pelo arquivo certo no lugar certo.

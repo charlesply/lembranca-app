@@ -1,4 +1,4 @@
-# Componentes · Histórias Cantadas
+# Componentes · Lembrança Cantada
 
 Biblioteca React pronta, estilizada com os tokens da marca (`../tokens/tokens.css`).
 

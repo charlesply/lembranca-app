@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import Quiz from './Quiz'
-// Histórias Cantadas · Design System (src/components/ui)
+// Lembrança Cantada · Design System (src/components/ui)
 // Importamos os componentes TSX direto dos arquivos pra evitar resolver
 // pelo `index.js` legado que mistura JSX em arquivo .js (Vite/oxc nao
 // processa). O `index.ts` exporta todos mas Vite prioriza o .js irmao
@@ -790,7 +790,7 @@ function pixBRCode({ key, amount, name = PIX_MERCHANT_NAME, city = PIX_MERCHANT_
 // um ping pro backend, que (1) salva o pedido de ajuda no proof_ai_data e
 // (2) avisa o admin no Evolution imediatamente. Resultado: a Bia já vê o
 // chat aberto sabendo de quem é, qual pedido, qual o problema da rejeição.
-const BIA_PHONE_E164 = '5511920103442'
+const BIA_PHONE_E164 = '5511920188319'
 async function openHelpOnWhatsApp({ orderId, honoreeName, customerName, customerPhone, reasons = [], context = 'rejected' }) {
   const id8 = String(orderId || '').slice(0, 8).toUpperCase()
   // Mensagem repaginada (jun/2026): bem mais curta, escaneavel, focada em
@@ -1537,7 +1537,7 @@ function Confetti() {
    - BUG fix (jun/2026): antes o setStatus('sharing') ficava preso quando
      navigator.share cancelava sem throw OU quando nenhum metodo dava certo
      mas tambem nao threw. Refatorado pra sempre limpar status num finally. */
-function ShareButton({ url, kind = 'audio', honoreeName, label = 'Enviar no WhatsApp', title = 'Histórias Cantadas', variant = 'primary' }) {
+function ShareButton({ url, kind = 'audio', honoreeName, label = 'Enviar no WhatsApp', title = 'Lembrança Cantada', variant = 'primary' }) {
   const [status, setStatus] = useState('idle')   // idle | sharing | copied | error
   const flash = (s) => { setStatus(s); setTimeout(() => setStatus('idle'), 2400) }
 
@@ -1647,7 +1647,7 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
           </svg>
         </button>
         <div className="my-orders-title-wrap">
-          <span className="my-orders-eyebrow">Histórias Cantadas</span>
+          <span className="my-orders-eyebrow">Lembrança Cantada</span>
           <h1 className="my-orders-title">Minhas músicas</h1>
           {customer?.name && <p className="my-orders-sub">Oi, {customer.name.split(' ')[0]} 💜</p>}
         </div>
@@ -1868,7 +1868,7 @@ function PreviewResultView({ resultData, onBuy, onSendProof, paymentSeen, onWhat
                 url={resultData?.original_url || resultData?.preview_url}
                 kind="audio"
                 honoreeName={resultData?.honoreeName}
-                title={resultData?.title || 'Histórias Cantadas'}
+                title={resultData?.title || 'Lembrança Cantada'}
                 label="Enviar música no WhatsApp"
               />
               {resultData?.video_url && (
@@ -1876,7 +1876,7 @@ function PreviewResultView({ resultData, onBuy, onSendProof, paymentSeen, onWhat
                   url={resultData.video_url}
                   kind="video"
                   honoreeName={resultData?.honoreeName}
-                  title={resultData?.title || 'Histórias Cantadas'}
+                  title={resultData?.title || 'Lembrança Cantada'}
                   label="Enviar vídeo no WhatsApp"
                   variant="secondary"
                 />
@@ -2194,7 +2194,7 @@ function ProgressView({ progress, statusMsg, formData, exampleSongs }) {
         {cur && (
           <div className="gen-examples">
             <div className="gen-examples-eyebrow">Últimas músicas dos nossos clientes</div>
-            <p className="gen-examples-sub">Ouça enquanto a sua nasce — todas foram criadas aqui no Histórias Cantadas.</p>
+            <p className="gen-examples-sub">Ouça enquanto a sua nasce — todas foram criadas aqui no Lembrança Cantada.</p>
             <article className="gen-example-card">
               <span className="gen-example-art"><VinylDisc size={44} /></span>
               <div className="gen-example-meta">
@@ -2524,9 +2524,9 @@ export default function App() {
   // Atalho: cliente clicou em "Já paguei" no card da página → reabre direto na
   // tela de upload do comprovante.
   const openProofUpload = (orderId) => startPayment(orderId, 'musica', 'upload')
-  const BIA_PHONE = '5511920103442'
+  const BIA_PHONE = '5511920188319'
   const INSTAGRAM = 'https://instagram.com/historiascantadasbr'
-  const WHATSAPP = `https://wa.me/${'5511920103442'}`
+  const WHATSAPP = `https://wa.me/${'5511920188319'}`
   const lastScrollY = useRef(0)
   const headerRef = useRef(null)
   const ticking = useRef(false)
@@ -2765,7 +2765,7 @@ export default function App() {
 
     // Começa em 1% imediatamente — sem ficar em zero parado, sem pulo brusco.
     // O tick visual abaixo (250ms) faz a barra avançar de forma contínua.
-    setLoading(true); setView('progress'); setProgress(1); setStatusMsg('📤 Enviando para o estúdio Histórias Cantadas...')
+    setLoading(true); setView('progress'); setProgress(1); setStatusMsg('📤 Enviando para o estúdio Lembrança Cantada...')
     // Declarado no escopo do try/catch externo pra ser limpo em caso de erro
     let tickId = null
     // Reset banner state — começa escondido
@@ -3732,7 +3732,7 @@ export default function App() {
 
   /* ── FAQ ── */
   const faqs = [
-    { q: 'Como funciona a Histórias Cantadas?', a: 'Você conta a história, escolhe estilo e voz, e o nosso estúdio transforma tudo numa música personalizada. Em minutos você recebe uma prévia gratuita pra ouvir antes de decidir.' },
+    { q: 'Como funciona a Lembrança Cantada?', a: 'Você conta a história, escolhe estilo e voz, e o nosso estúdio transforma tudo numa música personalizada. Em minutos você recebe uma prévia gratuita pra ouvir antes de decidir.' },
     { q: 'Quanto tempo demora pra ficar pronta?', a: 'Na maioria das vezes a prévia fica pronta em poucos minutos. A versão completa é liberada logo após a confirmação do pagamento.' },
     { q: 'Consigo ouvir antes de pagar?', a: 'Sim! Você recebe uma prévia gratuita da música. Só paga se gostar — sem compromisso nenhum.' },
     { q: 'Posso escolher a voz e o estilo?', a: 'Com certeza. Você escolhe o gênero musical, o clima e se a voz é masculina ou feminina. Tudo do seu jeito.' },
@@ -3760,9 +3760,9 @@ export default function App() {
     ]},
     { title: 'Empresa', links: [
       { label: 'Sobre nós', href: '#how' },
-      { label: 'Contato',   href: `https://wa.me/${'5511920103442'}`, external: true },
+      { label: 'Contato',   href: `https://wa.me/${'5511920188319'}`, external: true },
       { label: 'Instagram', href: 'https://instagram.com/historiascantadasbr', external: true },
-      { label: 'WhatsApp',  href: `https://wa.me/${'5511920103442'}`, external: true },
+      { label: 'WhatsApp',  href: `https://wa.me/${'5511920188319'}`, external: true },
     ]},
     { title: 'Legal', links: [
       { label: 'Termos de uso', href: '/termos.html', external: true },
@@ -4081,7 +4081,7 @@ export default function App() {
                   </div>
 
                   <div className="chat-body" ref={chatBodyRef}>
-                    <div className="chat-encryption"><IconLock s={12} /> As mensagens são protegidas. Histórias Cantadas.</div>
+                    <div className="chat-encryption"><IconLock s={12} /> As mensagens são protegidas. Lembrança Cantada.</div>
                     {chatMessages.map((m, i) => {
                       if (m.kind === 'audio') return (
                         <div key={i} className="chat-bubble bia chat-media">
@@ -4362,7 +4362,7 @@ export default function App() {
               <img className="demo-photo" src="/assets/hero/casal.jpg" alt="" aria-hidden="true" />
               <div className="demo-copy">
                 <h2 className="demo-title">Ouça exemplos de verdade</h2>
-                <p className="demo-sub">Veja (e ouça) como uma música personalizada da Histórias Cantadas emociona.</p>
+                <p className="demo-sub">Veja (e ouça) como uma música personalizada da Lembrança Cantada emociona.</p>
                 <a href="#examples" className="btn-light"><IconPlay s={15} /> Ouvir exemplos</a>
               </div>
             </div>
@@ -4902,7 +4902,7 @@ export default function App() {
             ))}
           </div>
           <div className="footer-bottom">
-            <div className="footer-text">Feito com <IconHeart s={13} /> por Histórias Cantadas</div>
+            <div className="footer-text">Feito com <IconHeart s={13} /> por Lembrança Cantada</div>
             <div className="footer-pay"><IconLock s={13} /> Pagamento seguro via PIX</div>
           </div>
         </div>
