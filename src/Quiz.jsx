@@ -347,7 +347,7 @@ function TeamPicker({ value, onChange, onSkip }) {
       </div>
       {showOther && (
         <input className="input-text" style={{ marginTop: 12 }} value={other} placeholder="Digite o time..."
-          onChange={e => { setOther(e.target.value); onChange(e.target.value) }} autoFocus />
+          onChange={e => { setOther(e.target.value); onChange(e.target.value, { fromInput: true }) }} autoFocus />
       )}
       <button type="button" className="quiz-skip" onClick={onSkip}>Pular ⤳</button>
     </div>
@@ -927,7 +927,7 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
           <>
             <h2 className="quiz-q">{nm} torce pra algum time?</h2>
             <TeamPicker value={c.team || ''}
-              onChange={(v) => { setChild(screen.idx, { team: v }); if (v) advance() }}
+              onChange={(v, meta) => { setChild(screen.idx, { team: v }); if (v && !meta?.fromInput) advance() }}
               onSkip={() => { setChild(screen.idx, { team: '' }); advance() }} />
           </>
         )
@@ -970,7 +970,7 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
           <>
             <h2 className="quiz-q">{honoree || 'A pessoa'} torce pra algum time?</h2>
             <TeamPicker value={team}
-              onChange={(v) => { setTeam(v); if (v) advance() }}
+              onChange={(v, meta) => { setTeam(v); if (v && !meta?.fromInput) advance() }}
               onSkip={() => { setTeam(''); advance() }} />
           </>
         )
