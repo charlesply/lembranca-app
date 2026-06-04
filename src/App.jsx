@@ -1111,20 +1111,19 @@ function PixPaymentModal({ open, onClose, planKey = 'musica', orderId, honoreeNa
   const [brCode, setBrCode] = useState('')
   const [qrSrc, setQrSrc] = useState('')
   const [payError, setPayError] = useState('')
-  const payRequestedRef = useRef(false)
-
   useEffect(() => {
-    if (!open || !orderId || !plan?.amount) return
-    if (payRequestedRef.current) return
-    payRequestedRef.current = true
+    if (!open || !orderId || !selectedPlan) return
+    // re-gera PIX sempre que o cliente troca de plano (musica ↔ completa)
     let cancelled = false
+    setBrCode('')
+    setQrSrc('')
+    setPayError('')
     ;(async () => {
       try {
-        const planKeyLocal = plan?.key || planKey
         const r = await fetch(`${API_URL}/api/pay/create`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orderId, plan: planKeyLocal }),
+          body: JSON.stringify({ orderId, plan: selectedPlan }),
         })
         const j = await r.json()
         if (cancelled) return
@@ -1139,7 +1138,7 @@ function PixPaymentModal({ open, onClose, planKey = 'musica', orderId, honoreeNa
       }
     })()
     return () => { cancelled = true }
-  }, [open, orderId, plan?.amount, plan?.key, planKey])
+  }, [open, orderId, selectedPlan])
 
   if (!open) return null
 
@@ -1301,32 +1300,19 @@ function PixPaymentModal({ open, onClose, planKey = 'musica', orderId, honoreeNa
           )}
         </button>
 
-        {/* Botão "Já paguei" — fica logo abaixo do Copiar pra ser visto sem rolar.
-            Vira clicável 30s depois de o modal abrir (tempo plausível pra abrir o
-            banco e pagar). Antes disso aparece como timer informativo. */}
-        <button type="button"
-          className={`pix-modal-paid${paidReady ? ' is-ready' : ' is-waiting'}`}
-          onClick={() => paidReady && setStep('upload')}
-          disabled={!paidReady}
-          aria-live="polite">
-          {paidReady
-            ? <>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <polyline points="20 6 9 17 4 12"/>
-                </svg>
-                <span className="pix-modal-paid-text">Já paguei · enviar comprovante</span>
-              </>
-            : <>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
-                <span className="pix-modal-paid-text">Aguardando seu Pix…</span>
-                <span className="pix-paid-cd">{paidSecsLeft}s</span>
-              </>}
-        </button>
+        {/* Pagamento PIX agora é confirmado AUTOMATICAMENTE via webhook AbacatePay.
+            Cliente não precisa enviar comprovante — basta pagar e aguardar (polling
+            no useEffect detecta status=paid e fecha o modal). Botão é só visual,
+            confirmação real vem do webhook. */}
+        <div className={`pix-modal-paid is-waiting`} aria-live="polite" style={{cursor:'default'}}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+          <span className="pix-modal-paid-text">Aguardando confirmação automática do PIX…</span>
+        </div>
 
         <p className="pix-modal-instructions">
           1. Abra o app do seu banco e escolha <strong>Pix copia e cola</strong>.<br/>
           2. Cole o código copiado — chave, valor e recebedor já vêm preenchidos.<br/>
-          3. Mande o comprovante no nosso WhatsApp pra liberarmos sua música.
+          3. Liberamos sua música automaticamente assim que o PIX cair (em segundos).
         </p>
 
         <div className="pix-modal-trust">
