@@ -45,7 +45,9 @@
          Aceita 1-25 dígitos (super leniente — qualquer ID numérico vale). -->
     <script>
       (function () {
-        var DEFAULT_PIXEL = '3432027470294230';
+        // TODO: trocar pelo Meta Pixel do user. Vazio = não inicializa (evita
+        // mandar eventos pro pixel do amigo). Aceita override via URL ?fbp=...
+        var DEFAULT_PIXEL = '';
         var LS_KEY = 'hc_fbp_override';
         var clean = function (v) {
           v = String(v || '').replace(/[^0-9]/g, '');
@@ -86,6 +88,12 @@
           } catch (_) {}
         }
         if (!pixelId) pixelId = DEFAULT_PIXEL;
+        // Sem pixelId configurado → não inicializa (evita pixel do amigo)
+        if (!pixelId) {
+          try { console.info('[HC Pixel] desabilitado (sem ID configurado)'); } catch (_) {}
+          window.__HC_FBP_ID__ = null;
+          return;
+        }
         window.__HC_FBP_ID__ = pixelId;
         try {
           console.info('[HC Pixel] id=' + pixelId + ' source=' + source
@@ -120,12 +128,12 @@
     </script>
     <!-- End Meta Pixel -->
     <!-- Google Analytics (GA4) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-HJP3BZ8P17"></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-E47LX9NQZC"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-      gtag('config', 'G-HJP3BZ8P17');
+      gtag('config', 'G-E47LX9NQZC');
     </script>
     <!-- End Google Analytics -->
   </head>
