@@ -45,7 +45,10 @@
          Aceita 1-25 dígitos (super leniente — qualquer ID numérico vale). -->
     <script>
       (function () {
-        var DEFAULT_PIXEL = '3432027470294230';
+        // Sem default — last-click ?fbp manda. Sem ?fbp e sem localStorage,
+        // o pixel simplesmente NÃO inicializa (zero tracking pra esse visitante)
+        // em vez de cair num pixel default que poderia ser de outra conta.
+        var DEFAULT_PIXEL = '';
         var LS_KEY = 'hc_fbp_override';
         var clean = function (v) {
           v = String(v || '').replace(/[^0-9]/g, '');
@@ -86,6 +89,13 @@
           } catch (_) {}
         }
         if (!pixelId) pixelId = DEFAULT_PIXEL;
+        // Sem pixelId (sem ?fbp na URL nem localStorage) → não inicializa fbq.
+        // Toda chamada window.fbq(...) depois falha silenciosamente (try/catch).
+        if (!pixelId) {
+          try { console.info('[HC Pixel] sem ID (sem ?fbp e sem localStorage) → pixel NÃO inicializado'); } catch (_) {}
+          window.__HC_FBP_ID__ = null;
+          return;
+        }
         window.__HC_FBP_ID__ = pixelId;
         try {
           console.info('[HC Pixel] id=' + pixelId + ' source=' + source
