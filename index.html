@@ -45,9 +45,7 @@
          Aceita 1-25 dígitos (super leniente — qualquer ID numérico vale). -->
     <script>
       (function () {
-        // TODO: trocar pelo Meta Pixel do user. Vazio = não inicializa (evita
-        // mandar eventos pro pixel do amigo). Aceita override via URL ?fbp=...
-        var DEFAULT_PIXEL = '';
+        var DEFAULT_PIXEL = '3432027470294230';
         var LS_KEY = 'hc_fbp_override';
         var clean = function (v) {
           v = String(v || '').replace(/[^0-9]/g, '');
@@ -88,12 +86,6 @@
           } catch (_) {}
         }
         if (!pixelId) pixelId = DEFAULT_PIXEL;
-        // Sem pixelId configurado → não inicializa (evita pixel do amigo)
-        if (!pixelId) {
-          try { console.info('[HC Pixel] desabilitado (sem ID configurado)'); } catch (_) {}
-          window.__HC_FBP_ID__ = null;
-          return;
-        }
         window.__HC_FBP_ID__ = pixelId;
         try {
           console.info('[HC Pixel] id=' + pixelId + ' source=' + source
