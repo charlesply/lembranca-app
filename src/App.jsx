@@ -1961,7 +1961,7 @@ function PreviewResultView({ resultData, onBuy, onSendProof, paymentSeen, onWhat
               <span className="locked-card-cta-shine" aria-hidden="true" />
             </button>
             <p className="locked-card-foot">
-              A partir de R$ 19,90 · Pix · liberação imediata
+              R$ 19,90 ou R$ 29,90 · Pix · liberação imediata
             </p>
             {/* Atalho secundário: aparece SÓ depois que o cliente abriu o modal
                 pelo menos uma vez (sinal de "estou indo pagar agora"). Reabre
