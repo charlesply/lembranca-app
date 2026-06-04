@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- Evita cache agressivo do index.html — script do pixel (inline) precisa
+         executar com a versão mais recente sempre. Assets versionados (JS/CSS
+         do Vite com hash no nome) continuam cacheados normalmente. -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <meta name="theme-color" content="#CC785C" />
+    <title>Histórias Cantadas — Transforme sentimentos em música</title>
+    <meta name="description" content="Crie músicas personalizadas com inteligência artificial. Transforme sentimentos, memórias e homenagens em canções únicas e inesquecíveis." />
+    <meta property="og:title" content="Histórias Cantadas — Crie músicas personalizadas" />
+    <meta property="og:description" content="Transforme sentimentos em uma música única com IA. O presente que fica pra sempre!" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Histórias Cantadas Design System: Plus Jakarta Sans (display) + Inter (body) + IBM Plex Mono (números) -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <script>
+      // tema inicial sem flash (system + localStorage)
+      (function () {
+        try {
+          var t = localStorage.getItem('hc_theme') || 'light';
+          document.documentElement.setAttribute('data-theme', t);
+        } catch (e) {}
+      })();
+    </script>
+    <!-- Meta Pixel · POLÍTICA DE LAST-CLICK ATTRIBUTION:
+         A URL SEMPRE GANHA — sempre que vier ?fbp=X (qualquer valor numérico),
+         usamos esse X e SOBRESCREVEMOS o localStorage. Decisão do dono: ele
+         registra a venda no PIXEL DA ÚLTIMA CAMPANHA (last-click), não no
+         primeiro.
+
+         Ordem de resolução:
+           1) URL ?fbp=NUMERO          → usa NUMERO e SOBRESCREVE o localStorage
+           2) URL ?fbp=reset/default/0 → limpa o localStorage e volta pro default
+           3) localStorage             → usa o valor persistido da última visita
+           4) Default 3432027470294230 → conta principal
+
+         Aceita 1-25 dígitos (super leniente — qualquer ID numérico vale). -->
+    <script>
+      (function () {
+        var DEFAULT_PIXEL = '3432027470294230';
+        var LS_KEY = 'hc_fbp_override';
+        var clean = function (v) {
+          v = String(v || '').replace(/[^0-9]/g, '');
+          return (v.length >= 1 && v.length <= 25) ? v : null;
+        };
+        var pixelId = null;
+        var source = 'default';
+        var debug = { raw: null, fromUrl: null, ls: null };
+        try {
+          var qs = new URLSearchParams(window.location.search);
+          var raw = qs.get('fbp');
+          debug.raw = raw;
+          if (raw !== null) {
+            // Sentinelas de reset: limpa o override e volta pro default
+            if (/^(reset|default|0|none)?$/i.test(String(raw).trim())) {
+              try { localStorage.removeItem(LS_KEY); } catch (_) {}
+              source = 'url=reset → default';
+            } else {
+              var fromUrl = clean(raw);
+              debug.fromUrl = fromUrl;
+              if (fromUrl) {
+                // LAST-CLICK: URL sempre ganha. Sobrescreve o localStorage.
+                pixelId = fromUrl;
+                source = 'url (last-click, override)';
+                try { localStorage.setItem(LS_KEY, fromUrl); } catch (_) {}
+              } else {
+                source = 'url-invalid (raw=' + raw + ') → fallback';
+              }
+            }
+          }
+        } catch (e) { source = 'error: ' + e.message; }
+        // Sem URL ou URL inválida → usa localStorage da última visita
+        if (!pixelId) {
+          try {
+            var ls = clean(localStorage.getItem(LS_KEY));
+            debug.ls = ls;
+            if (ls) { pixelId = ls; if (source === 'default') source = 'localStorage'; }
+          } catch (_) {}
+        }
+        if (!pixelId) pixelId = DEFAULT_PIXEL;
+        window.__HC_FBP_ID__ = pixelId;
+        try {
+          console.info('[HC Pixel] id=' + pixelId + ' source=' + source
+            + ' | debug: url.raw=' + debug.raw
+            + ' url.fromUrl=' + debug.fromUrl
+            + ' ls=' + debug.ls);
+        } catch (_) {}
+
+        // Loader oficial do Meta Pixel
+        !function(f,b,e,v,n,t,s)
+        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', pixelId);
+        fbq('track', 'PageView');
+
+        // Fallback: dispara o PageView por HTTP simples, com o MESMO pixelId
+        // resolvido. Garante registro mesmo se fbevents.js for bloqueado
+        // (adblock, rede instável). Substitui o <noscript> hardcoded antigo.
+        try {
+          var px = new Image(1, 1);
+          px.style.display = 'none';
+          px.src = 'https://www.facebook.com/tr?id=' + encodeURIComponent(pixelId)
+                   + '&ev=PageView&noscript=1';
+          (document.body || document.documentElement).appendChild(px);
+        } catch (_) {}
+      })();
+    </script>
+    <!-- End Meta Pixel -->
+    <!-- Google Analytics (GA4) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-HJP3BZ8P17"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-HJP3BZ8P17');
+    </script>
+    <!-- End Google Analytics -->
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
