@@ -1875,13 +1875,15 @@ function PreviewResultView({ resultData, onBuy, onSendProof, paymentSeen, onWhat
         )}
 
         {/* Botão WhatsApp flutuante — só aparece após pagamento.
-            Suporte direto pra dúvidas com a Bia, manda nome, plano e link da música. */}
+            Suporte direto pra dúvidas com a Bia, manda nome do cliente, do homenageado, plano e link. */}
         {resultData?.unlocked && (() => {
           const supportNum = '5511920188319'
           const honoree = resultData?.honoreeName || 'minha música'
+          const clientName = (resultData?.customerName || resultData?.clientName || resultData?.customer_name || '').trim()
+          const greet = clientName ? `Olá Bia! Aqui é ${clientName}` : 'Olá Bia!'
           const orderId = resultData?.orderId ? `\nPedido: #${String(resultData.orderId).slice(0,8).toUpperCase()}` : ''
           const link = resultData?.original_url ? `\nLink: ${resultData.original_url}` : ''
-          const msg = `Olá Bia! Acabei de comprar a música para *${honoree}* e preciso de ajuda 🎵${orderId}${link}`
+          const msg = `${greet} — comprei a música para *${honoree}* e preciso de ajuda 🎵${orderId}${link}`
           const waHref = `https://wa.me/${supportNum}?text=${encodeURIComponent(msg)}`
           return (
             <a className="floating-wa-btn" href={waHref} target="_blank" rel="noopener noreferrer"
@@ -4914,19 +4916,33 @@ export default function App() {
         </div>
       </footer>
 
-      {/* STICKY CTA */}
-      {view === 'landing' && (
-        <button className={`bia-fab${ctaVisible ? ' visible' : ''}`} onClick={scrollToForm} aria-label="Falar com a Bia">
-          <span className="bia-fab-avatar">
-            <img src="/assets/Bia.jpeg" alt="Bia" onError={e => e.currentTarget.classList.add('hide')} />
-            <span className="bia-fab-dot" />
-          </span>
-          <span className="bia-fab-info">
-            <span className="bia-fab-name">Bia</span>
-            <span className="bia-fab-status">online · responde na hora</span>
-          </span>
-        </button>
-      )}
+      {/* STICKY CTA — Falar com a Bia direto no WhatsApp (só aparece após scrollar).
+          Manda dados se já tiver pedido salvo no localStorage (ex.: visitas anteriores). */}
+      {view === 'landing' && (() => {
+        const supportNum = '5511920188319'
+        const saved = (() => {
+          try { return JSON.parse(localStorage.getItem('hc_current_order') || 'null') } catch (_) { return null }
+        })()
+        const clientName = (saved?.customerName || '').trim()
+        const honoree = (saved?.honoreeName || '').trim()
+        const orderId = saved?.id ? `\nPedido: #${String(saved.id).slice(0,8).toUpperCase()}` : ''
+        const greet = clientName ? `Olá Bia! Aqui é ${clientName}` : 'Olá Bia!'
+        const honPart = honoree ? ` — sobre a música para *${honoree}*` : ' — quero entender melhor sobre a música personalizada antes de comprar 🎵'
+        const msg = `${greet}${honPart}${orderId}`
+        const waHref = `https://wa.me/${supportNum}?text=${encodeURIComponent(msg)}`
+        return (
+          <a className={`bia-fab${ctaVisible ? ' visible' : ''}`} href={waHref} target="_blank" rel="noopener noreferrer" aria-label="Falar com a Bia no WhatsApp">
+            <span className="bia-fab-avatar">
+              <img src="/assets/Bia.jpeg" alt="Bia" onError={e => e.currentTarget.classList.add('hide')} />
+              <span className="bia-fab-dot" />
+            </span>
+            <span className="bia-fab-info">
+              <span className="bia-fab-name">Bia</span>
+              <span className="bia-fab-status">online · responde na hora</span>
+            </span>
+          </a>
+        )
+      })()}
 
       {/* TOAST */}
       {view === 'landing' && (
