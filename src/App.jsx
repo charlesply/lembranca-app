@@ -19,28 +19,60 @@ const API_URL = 'https://suno-api-novo.bvph.uk'
 const USE_QUIZ = true
 
 // Rastreamento Meta Pixel + Google Analytics (GA4) de uma vez. custom=true => trackCustom no Meta.
-function track(event, params, custom) {
-  try { if (typeof window !== 'undefined' && window.fbq) window.fbq(custom ? 'trackCustom' : 'track', event, params || {}) } catch (_) {}
+// options.eventID — quando passado, Meta Pixel + CAPI deduplicam usando esse ID.
+function track(event, params, custom, options) {
+  try {
+    if (typeof window !== 'undefined' && window.fbq) {
+      if (options && options.eventID) {
+        window.fbq(custom ? 'trackCustom' : 'track', event, params || {}, { eventID: options.eventID })
+      } else {
+        window.fbq(custom ? 'trackCustom' : 'track', event, params || {})
+      }
+    }
+  } catch (_) {}
   try { if (typeof window !== 'undefined' && window.gtag) window.gtag('event', event, params || {}) } catch (_) {}
 }
 const priceToNum = (p) => Number(String(p || '').replace(/[^\d,]/g, '').replace(',', '.')) || 0
 const PLAN_VALUES = { musica: 19.90, completa: 29.90 }
-function trackPurchase() {
+// orderId opcional: quando passado, o evento Purchase carrega event_id = purchase_{orderId}
+// pra deduplicar com a chamada server-side (CAPI no backend).
+function trackPurchase(orderId) {
   let v = 0
   try { v = Number(localStorage.getItem('hc_pay_value')) || 0 } catch (_) {}
-  track('Purchase', { value: v, currency: 'BRL' })
+  const params = { value: v, currency: 'BRL' }
+  const options = orderId ? { eventID: `purchase_${orderId}` } : undefined
+  track('Purchase', params, false, options)
 }
 
 // SEGURANÇA: o frontend NÃO fala mais direto com o banco (sem service_role exposta).
 // Tudo passa pelo backend, que guarda as chaves no servidor e valida as entradas.
 // Retry com backoff exponencial (3 tentativas) — protege a criação do pedido
 // contra hiccup de rede ou 5xx temporário, evitando perder a história escrita.
+// Lê o cookie pelo nome — retorna '' se não existir.
+function _readCookie(name) {
+  try {
+    const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)'))
+    return m ? decodeURIComponent(m[1]) : ''
+  } catch (_) { return '' }
+}
+// Junta os dados que o backend usa pra Meta CAPI: pixel ativo + cookies _fbp/_fbc.
+// O servidor adiciona IP + User-Agent.
+function getMetaPixelData() {
+  let fbp_pixel_id = ''
+  try { fbp_pixel_id = String(window.__HC_FBP_ID__ || '') } catch (_) {}
+  return {
+    fbp_pixel_id,
+    fbp: _readCookie('_fbp'),
+    fbc: _readCookie('_fbc'),
+  }
+}
 async function apiCreateOrder(body) {
   let lastErr = null
+  const enriched = { ...body, ...getMetaPixelData() }
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const r = await fetch(`${API_URL}/api/order`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(enriched),
       })
       if (r.ok) return r.json()
       if (r.status >= 400 && r.status < 500) throw new Error(`order ${r.status}`) // 4xx: não retenta
@@ -2488,7 +2520,7 @@ export default function App() {
     if (!payReturn || !payReturn.orderId) return
     setPayReturn({ ...payReturn, status: 'verifying' })
     apiPayVerify(payReturn.orderId, payReturn.tx, payReturn.slug).then(r => {
-      if (r && r.paid) trackPurchase()
+      if (r && r.paid) trackPurchase(payReturn.orderId)
       setPayReturn(p => ({ ...p, status: (r && r.paid) ? 'paid' : 'failed' }))
     })
   }
@@ -3434,7 +3466,7 @@ export default function App() {
       pushBubble({ kind: 'retryPay', orderId, tx, slug })
       return
     }
-    trackPurchase()
+    trackPurchase(orderId)
     let ctx = {}
     try { ctx = JSON.parse(localStorage.getItem('hc_order_ctx') || '{}') } catch (_) {}
     await biaSay('✅ *Pagamento confirmado!* Muito obrigada 💜')
@@ -4650,7 +4682,7 @@ export default function App() {
           // backend já marcou paid_at — busca os links atualizados e libera a UI.
           // Dispara Purchase no Meta Pixel + Google Analytics nesse mesmo gancho
           // (cobre tanto auto-aprovação por IA quanto aprovação manual via polling).
-          try { trackPurchase() } catch (_) {}
+          try { trackPurchase(oid) } catch (_) {}
           try {
             const row = await apiOrderStatus(oid)
             if (row) {
