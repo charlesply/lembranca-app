@@ -1,8 +1,8 @@
 // Pagina de entrega standalone — abre quando a URL e /p/:id.
 // Mostra TODAS as versoes do audio (full_audio_urls) + video + downloads
-// + botao "Compartilhar" simples (Web Share API só com URL, sem arquivos
-// pra evitar inflacao de tamanho que alguns devices causam no fetch+blob).
-import React, { useEffect, useState, useRef } from 'react'
+// + botao "Compartilhar" via Web Share API com arquivos (anexa midia nativa
+// no WhatsApp). Fallback: baixa o arquivo e instrui a anexar manualmente.
+import React, { useEffect, useState } from 'react'
 
 const API_URL = 'https://suno-api-novo.bvph.uk'
 
@@ -18,30 +18,37 @@ function safeFilename(name, ext, suffix) {
   return `Para_${clean || 'voce'}${suffix ? '_' + suffix : ''}.${ext}`
 }
 
-// Simplificado: tenta navigator.share com URL apenas (picker nativo iOS/Android),
-// senão cai pra api.whatsapp.com em nova aba. SEM fetch, SEM blob, SEM file —
-// não tem risco de inflar tamanho como acontecia com files.
-async function shareLink(url, label) {
-  const text = `${label}\n\n${url}`
+// Detecta suporte a compartilhar arquivos via Web Share API.
+// Em mobile (Android Chrome, iOS Safari 15+) compartilha o ARQUIVO direto
+// pro WhatsApp (áudio/vídeo nativo). Em desktop costuma cair no fallback.
+function canShareFiles() {
   try {
-    if (navigator.share) {
-      await navigator.share({ title: label, text: label, url })
-      return
-    }
-  } catch (e) {
-    if (e?.name === 'AbortError') return  // user cancelou
-    // qualquer outro erro cai no fallback
-  }
-  // Fallback: abre api.whatsapp.com em nova aba (cliente cola/manda)
-  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
+    if (!navigator.canShare) return false
+    const probe = new File(['x'], 'probe.txt', { type: 'text/plain' })
+    return navigator.canShare({ files: [probe] })
+  } catch (_) { return false }
+}
+
+// Baixa o arquivo como fallback. User abre WhatsApp e anexa do Downloads.
+function downloadFile(url, filename) {
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.style.display = 'none'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
 }
 
 export default function DeliveryPage() {
   const id = getOrderId()
   const [data, setData] = useState(null)
   const [err, setErr] = useState(null)
-  // Poster do video extraido do primeiro frame (canvas). Fica null se nao deu.
   const [videoPoster, setVideoPoster] = useState(null)
+  // Estado de loading + mensagem por item
+  // { [key]: { loading: bool, msg: string | null } }
+  const [shareState, setShareState] = useState({})
+  const setShare = (key, patch) => setShareState(prev => ({ ...prev, [key]: { ...prev[key], ...patch } }))
 
   useEffect(() => {
     if (!id) { setErr('Link inválido. Verifique a URL.'); return }
@@ -51,9 +58,9 @@ export default function DeliveryPage() {
       .catch(() => setErr('Não conseguimos carregar seu pedido. Tente atualizar a página.'))
   }, [id])
 
-  // Gera poster do primeiro frame do vídeo via canvas (resolve a tela cinza
-  // do iOS Safari quando preload="metadata"). Se CORS bloquear o toDataURL,
-  // cai silenciosamente — o player segue exibindo o botão de play padrão.
+  // Poster do video extraido do primeiro frame via canvas (resolve a tela
+  // cinza do iOS Safari quando preload=metadata). Se CORS bloquear, fica
+  // null silenciosamente.
   useEffect(() => {
     const videoUrl = data?.video_brinde_url
     if (!videoUrl) return
@@ -66,7 +73,6 @@ export default function DeliveryPage() {
     const cleanup = () => { try { v.src = ''; v.load() } catch (_) {} }
     v.onloadeddata = () => {
       if (cancelled) return
-      // Pula pra 0.5s pra evitar tela preta do fade-in
       try { v.currentTime = Math.min(0.5, (v.duration || 1) * 0.05) } catch (_) {}
     }
     v.onseeked = () => {
@@ -86,10 +92,42 @@ export default function DeliveryPage() {
     return () => { cancelled = true; cleanup() }
   }, [data?.video_brinde_url])
 
+  // Compartilha o arquivo via Web Share API. Em mobile = mídia nativa
+  // no WhatsApp. Fallback (desktop, CORS, browser antigo) = download.
+  async function handleShare(key, url, filename, mimeType, label) {
+    if (shareState[key]?.loading) return
+    setShare(key, { loading: true, msg: null })
+    try {
+      if (!canShareFiles()) {
+        downloadFile(url, filename)
+        setShare(key, { loading: false, msg: 'Arquivo baixado! Abra o WhatsApp e anexe pelo clipe 📎' })
+        return
+      }
+      const resp = await fetch(url, { credentials: 'omit' })
+      if (!resp.ok) throw new Error('http ' + resp.status)
+      const blob = await resp.blob()
+      const file = new File([blob], filename, { type: mimeType })
+      if (!navigator.canShare({ files: [file] })) {
+        downloadFile(url, filename)
+        setShare(key, { loading: false, msg: 'Arquivo baixado! Abra o WhatsApp e anexe pelo clipe 📎' })
+        return
+      }
+      await navigator.share({ files: [file], title: label, text: label })
+      setShare(key, { loading: false, msg: null })
+    } catch (e) {
+      if (e?.name === 'AbortError') {
+        setShare(key, { loading: false, msg: null })
+        return
+      }
+      console.warn('share failed, falling back to download:', e)
+      try { downloadFile(url, filename) } catch (_) {}
+      setShare(key, { loading: false, msg: 'Arquivo baixado! Abra o WhatsApp e anexe pelo clipe 📎' })
+    }
+  }
+
   if (err) return <Shell><div className="dp-err">{err}</div></Shell>
   if (!data) return <Shell><div className="dp-loading">Carregando sua música…</div></Shell>
 
-  // Monta lista de audios: full_audio_urls (1 ou 2 itens) + fallback p/ original
   let audios = Array.isArray(data.full_audio_urls) ? data.full_audio_urls.filter(Boolean) : []
   if (!audios.length && data.original_audio_url) audios = [data.original_audio_url]
   if (!audios.length && data.preview_audio_url) audios = [data.preview_audio_url]
@@ -110,6 +148,8 @@ export default function DeliveryPage() {
         {audios.map((url, i) => {
           const filename = safeFilename(honoree, 'mp3', audios.length > 1 ? `v${i+1}` : '')
           const label = `🎵 Música para ${honoree}${audios.length > 1 ? ' (Versão ' + (i+1) + ')' : ''}`
+          const key = `audio-${i}`
+          const st = shareState[key] || {}
           return (
             <section key={url} className="dp-section">
               <h2>🎧 Música {audios.length > 1 ? `— Versão ${i + 1}` : ''}</h2>
@@ -119,31 +159,45 @@ export default function DeliveryPage() {
                   ⬇ Baixar MP3
                 </a>
                 <button type="button" className="dp-btn dp-btn-wa"
-                        onClick={() => shareLink(url, label)}>
-                  <WaIcon /> Compartilhar
+                        disabled={st.loading}
+                        onClick={() => handleShare(key, url, filename, 'audio/mpeg', label)}>
+                  {st.loading
+                    ? <><Spinner /> Preparando…</>
+                    : <><WaIcon /> Compartilhar</>}
                 </button>
               </div>
+              {st.msg && <p className="dp-share-msg">{st.msg}</p>}
             </section>
           )
         })}
 
-        {video && (
-          <section className="dp-section">
-            <h2>🎬 Vídeo com a letra</h2>
-            <video controls preload="metadata" src={video} playsInline
-                   poster={videoPoster || undefined}
-                   style={{ width: '100%', borderRadius: 12, background: '#000' }} />
-            <div className="dp-btn-row">
-              <a className="dp-btn dp-btn-primary" href={video} download={safeFilename(honoree, 'mp4')}>
-                ⬇ Baixar MP4
-              </a>
-              <button type="button" className="dp-btn dp-btn-wa"
-                      onClick={() => shareLink(video, `🎬 Vídeo da música para ${honoree}`)}>
-                <WaIcon /> Compartilhar
-              </button>
-            </div>
-          </section>
-        )}
+        {video && (() => {
+          const filename = safeFilename(honoree, 'mp4')
+          const label = `🎬 Vídeo da música para ${honoree}`
+          const key = 'video'
+          const st = shareState[key] || {}
+          return (
+            <section className="dp-section">
+              <h2>🎬 Vídeo com a letra</h2>
+              <video controls preload="metadata" src={video} playsInline
+                     poster={videoPoster || undefined}
+                     style={{ width: '100%', borderRadius: 12, background: '#000' }} />
+              <div className="dp-btn-row">
+                <a className="dp-btn dp-btn-primary" href={video} download={filename}>
+                  ⬇ Baixar MP4
+                </a>
+                <button type="button" className="dp-btn dp-btn-wa"
+                        disabled={st.loading}
+                        onClick={() => handleShare(key, video, filename, 'video/mp4', label)}>
+                  {st.loading
+                    ? <><Spinner /> Preparando…</>
+                    : <><WaIcon /> Compartilhar</>}
+                </button>
+              </div>
+              {st.msg && <p className="dp-share-msg">{st.msg}</p>}
+            </section>
+          )
+        })()}
 
         {!audios.length && !video && (
           <p className="dp-subtitle" style={{ marginTop: 24 }}>
@@ -167,10 +221,21 @@ function WaIcon() {
   )
 }
 
+function Spinner() {
+  return (
+    <span style={{
+      display: 'inline-block', width: 14, height: 14,
+      border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff',
+      borderRadius: '50%', marginRight: 8, animation: 'dp-spin 0.7s linear infinite',
+    }} />
+  )
+}
+
 function Shell({ children }) {
   return (
     <div className="dp-shell">
       <style>{`
+        @keyframes dp-spin { to { transform: rotate(360deg); } }
         .dp-shell {
           min-height: 100vh;
           background: linear-gradient(180deg, #fef9f5 0%, #fff 100%);
@@ -207,8 +272,15 @@ function Shell({ children }) {
         }
         .dp-btn:hover { opacity: .92; }
         .dp-btn:active { transform: translateY(1px); }
+        .dp-btn:disabled { opacity: .65; cursor: wait; }
         .dp-btn-primary { background: #CC785C; color: #fff; }
         .dp-btn-wa { background: #25D366; color: #fff; }
+        .dp-share-msg {
+          margin: 10px 0 0; padding: 10px 12px;
+          background: #eef9f0; border: 1px solid #c8e6cf;
+          border-radius: 10px; font-size: 13px; color: #1a6b35;
+          line-height: 1.45;
+        }
         .dp-loading, .dp-err {
           text-align: center; padding: 80px 24px; color: #7a6354; font-size: 16px;
         }
