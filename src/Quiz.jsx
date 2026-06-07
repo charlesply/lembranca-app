@@ -95,6 +95,24 @@ const validateFullName = (s) => {
   return null
 }
 
+// email — formato básico + sugestão pra typos comuns (gmal/gmial/hotmal/yaho/.con)
+const validateEmail = (s) => {
+  const v = String(s || '').trim().toLowerCase()
+  if (!v) return null
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Esse e-mail parece incompleto 📧 Confere?'
+  const typoFixes = [
+    [/@gmal\./, '@gmail.'], [/@gmial\./, '@gmail.'], [/@gmai\./, '@gmail.'],
+    [/@hotmal\./, '@hotmail.'], [/@hotnail\./, '@hotmail.'], [/@hotmai\./, '@hotmail.'],
+    [/@yahooo\./, '@yahoo.'], [/@yaho\./, '@yahoo.'],
+    [/@outloo\./, '@outlook.'], [/@outllok\./, '@outlook.'],
+    [/\.con$/, '.com'], [/\.cm$/, '.com'], [/\.comm$/, '.com'],
+  ]
+  for (const [re, sub] of typoFixes) {
+    if (re.test(v)) return `Acho que você quis dizer "${v.replace(re, sub)}", confere?`
+  }
+  return null
+}
+
 // idade plausível (0–110). `required` torna o campo obrigatório (usado em childInfo).
 const validateAge = (s, required = false) => {
   const v = (s || '').trim()
@@ -378,6 +396,7 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
   const [voice, setVoice] = useState(initDraft?.voice || '')
   const [clientName, setClientName] = useState(initDraft?.clientName || '')
   const [phone, setPhone] = useState(initDraft?.phone || '')
+  const [email, setEmail] = useState(initDraft?.email || '')
   const [relExpanded, setRelExpanded] = useState(false)
   const [genreExpanded, setGenreExpanded] = useState(false)
   const [showResumeBanner, setShowResumeBanner] = useState(!!initDraft?.relId)
@@ -512,6 +531,8 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
         return !validateFullName(clientName)
           && clientName.trim().includes(' ')
           && phone.replace(/\D/g, '').length >= 10
+          && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim().toLowerCase())
+          && !validateEmail(email)
       case 'review': return true
       default: return true
     }
@@ -606,10 +627,10 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
     saveDraft({
       si, relId: rel?.id || null,
       honoree, count, children, traits, open1, open2, exTone, team,
-      occasion, feeling, genre, mood, voice, clientName, phone,
+      occasion, feeling, genre, mood, voice, clientName, phone, email,
       draftOrderId: draftOrderIdRef.current,
     })
-  }, [si, rel, honoree, count, children, traits, open1, open2, exTone, team, occasion, feeling, genre, mood, voice, clientName, phone])
+  }, [si, rel, honoree, count, children, traits, open1, open2, exTone, team, occasion, feeling, genre, mood, voice, clientName, phone, email])
 
   /* ── Trilha de eventos do quiz (cracker analytics) ──
      Mantém em ref pra não causar re-render; cada step adiciona uma linha
@@ -637,6 +658,7 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
     return {
       honoree_name: honoree_name || null,
       customer_name: clientName || null,
+      customer_email: (email || '').trim().toLowerCase() || null,
       story: buildStoryStr() || null,
       style_raw: [genre, mood, voice].filter(Boolean).join(' | ') || null,
       genre: genre || null,
@@ -647,7 +669,7 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
       events_log: eventsLogRef.current || null,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rel, honoree, children, clientName, genre, mood, voice, screen?.type, si])
+  }, [rel, honoree, children, clientName, email, genre, mood, voice, screen?.type, si])
 
   // story local helper (mesma lógica do builder final) — usado pra incremental
   function buildStoryStr() {
@@ -673,6 +695,7 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
           phone: cleanPhone || '',
           honoree_name: fields.honoree_name || 'rascunho',
           customer_name: fields.customer_name,
+          customer_email: fields.customer_email,
           story: fields.story,
           style_raw: fields.style_raw,
           genre: fields.genre,
@@ -686,11 +709,11 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
         const r = await apiCreateOrder(body)
         if (r && r.orderId) {
           draftOrderIdRef.current = r.orderId
-          saveDraft({ si, relId: rel?.id, honoree, count, children, traits, open1, open2, exTone, team, occasion, feeling, genre, mood, voice, clientName, phone, draftOrderId: r.orderId })
+          saveDraft({ si, relId: rel?.id, honoree, count, children, traits, open1, open2, exTone, team, occasion, feeling, genre, mood, voice, clientName, phone, email, draftOrderId: r.orderId })
         }
       } catch (_) {}
     })()
-  }, [phone, honoree, children, rel, screen?.type, apiCreateOrder, buildIncrementalFields, si, traits, open1, open2, exTone, team, genre, mood, voice, clientName, count])
+  }, [phone, honoree, children, rel, screen?.type, apiCreateOrder, buildIncrementalFields, si, traits, open1, open2, exTone, team, genre, mood, voice, clientName, email, count])
 
   // PATCH incremental: cada mudança relevante sincroniza campos com o backend
   useEffect(() => {
@@ -771,6 +794,7 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
       genre, mood, voice,
       clientName: clientName.trim(),
       phone,
+      email: (email || '').trim().toLowerCase(),
       orderId: draftOrderIdRef.current,  // o App reaproveita se houver
     }
     try { track && track('QuizComplete', { relationship: rel.id }, true) } catch (_) {}
@@ -783,7 +807,7 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
     draftOrderIdRef.current = null
     setSi(0); setRel(null); setHonoree(''); setCount(1); setChildren([])
     setTraits([]); setOpen1(''); setOpen2(''); setExTone(''); setTeam('')
-    setGenre(''); setMood(''); setVoice(''); setClientName(''); setPhone('')
+    setGenre(''); setMood(''); setVoice(''); setClientName(''); setPhone(''); setEmail('')
     setShowResumeBanner(false)
   }
 
@@ -1077,10 +1101,11 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
 
       case 'contact': {
         const clientErr = validateFullName(clientName)
+        const emailErr = validateEmail(email)
         return (
           <>
             <h2 className="quiz-q">Falta pouquinho! Quem é você?</h2>
-            <p className="quiz-hint">A gente te avisa aqui no site quando sua música ficar pronta.</p>
+            <p className="quiz-hint">A gente te avisa aqui no site quando sua música ficar pronta — e manda um link no seu e-mail pra você ouvir sempre que quiser. 💌</p>
             <label className="quiz-label">Seu nome e sobrenome</label>
             <div className="input-wrapper">
               <span className="input-icon" aria-hidden="true">👤</span>
@@ -1094,6 +1119,14 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
               <input className="input-text has-icon" value={phone} onChange={e => setPhone(phoneMask(e.target.value))}
                 type="tel" placeholder="11 9 9999-9999" maxLength={16} />
             </div>
+            <label className="quiz-label" style={{ marginTop: 14 }}>Seu e-mail</label>
+            <div className="input-wrapper">
+              <span className="input-icon" aria-hidden="true">💌</span>
+              <input className="input-text has-icon" value={email} onChange={e => setEmail(e.target.value)}
+                type="email" inputMode="email" autoComplete="email" autoCapitalize="off" autoCorrect="off"
+                placeholder="seu@email.com" aria-invalid={!!emailErr} maxLength={120} />
+            </div>
+            {emailErr && <p className="quiz-hint" style={{ marginTop: 8, color: 'var(--c-danger)' }} role="alert">{emailErr}</p>}
           </>
         )
       }

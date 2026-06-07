@@ -2794,11 +2794,12 @@ export default function App() {
 
   const handleSubmit = useCallback(async (dataOverride) => {
     const data = (dataOverride && typeof dataOverride.honoreeName === 'string') ? dataOverride : formData
-    const { honoreeName, relationship, occasion, story, genre, mood, voice, clientName, phone } = data
+    const { honoreeName, relationship, occasion, story, genre, mood, voice, clientName, phone, email } = data
     if (!honoreeName.trim()) return alert('Informe para quem é a música!')
     if (!clientName || !clientName.trim().includes(' ')) return alert('Informe seu nome e sobrenome!')
     const cleanPhone = phone?.replace(/\D/g, '') || ''
     if (cleanPhone.length < 10) return alert('Informe um número de WhatsApp válido com DDD!')
+    const cleanEmail = (email || '').trim().toLowerCase()
 
     const parts = [`Música para ${honoreeName}`]
     if (relationship) parts.push(`(${relationship})`)
@@ -2834,6 +2835,7 @@ export default function App() {
         phone: phone?.replace(/\D/g, '') || '',
         honoree_name: honoreeName,
         customer_name: clientName || null,
+        customer_email: cleanEmail || null,
         occasion: occasion || null,
         story: story || null,
         style_raw: `${genre} | ${mood} | ${voice}`,
@@ -2853,6 +2855,9 @@ export default function App() {
         customerName: clientName,
         phone: phone?.replace(/\D/g, '') || '',
       })
+      // Salva customer (phone+name+email) no localStorage pra recorrente.
+      // No próximo pedido vem pré-preenchido — reduz fricção.
+      try { saveCustomer({ phone: cleanPhone, name: clientName || '', email: cleanEmail }) } catch (_) {}
       console.log('[HC] ✅ Order criada:', orderId)
     } catch (err) { console.error('[HC] ❌ Supabase order:', err.message) }
 
