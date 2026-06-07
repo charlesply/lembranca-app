@@ -25,3 +25,4 @@ dist-ssr
 
 # Claude Code settings/agents
 .claude/
+dist.tgz

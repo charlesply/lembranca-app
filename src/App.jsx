@@ -101,14 +101,21 @@ function loadCustomer() {
     if (!raw) return null
     const c = JSON.parse(raw)
     if (!c || !c.phone) return null
-    return { phone: String(c.phone), name: String(c.name || ''), savedAt: c.savedAt || Date.now() }
+    return { phone: String(c.phone), name: String(c.name || ''), email: String(c.email || ''), savedAt: c.savedAt || Date.now() }
   } catch (_) { return null }
 }
-function saveCustomer({ phone, name }) {
+function saveCustomer({ phone, name, email }) {
   try {
     const ph = String(phone || '').replace(/\D/g, '')
     if (ph.length < 10) return
-    localStorage.setItem(HC_CUSTOMER_KEY, JSON.stringify({ phone: ph, name: name || '', savedAt: Date.now() }))
+    // Preserva email antigo se o novo não vier (ex: customer voltou só com phone)
+    let prevEmail = ''
+    try { const prev = JSON.parse(localStorage.getItem(HC_CUSTOMER_KEY) || '{}'); prevEmail = prev.email || '' } catch (_) {}
+    localStorage.setItem(HC_CUSTOMER_KEY, JSON.stringify({
+      ph: undefined, phone: ph, name: name || '',
+      email: (email || prevEmail || '').trim().toLowerCase(),
+      savedAt: Date.now(),
+    }))
   } catch (_) {}
 }
 function clearCustomer() {
@@ -2584,6 +2591,7 @@ export default function App() {
     voice: 'Feminino',
     clientName: _devError ? 'Charles Plesley' : '',
     phone: _devError ? '5511999998888' : '',
+    email: _devError ? 'charles@dev.com' : '',
   } : (() => {
     // Cliente recorrente: pré-preenche nome + telefone se tem no localStorage.
     // Economiza ~30s de fricção em pedidos repetidos. As demais telas
@@ -2599,6 +2607,7 @@ export default function App() {
       voice: '',
       clientName: c?.name || '',
       phone: c?.phone || '',
+      email: c?.email || '',
     }
   })())
 
@@ -3119,7 +3128,29 @@ export default function App() {
       },
       bia: () => 'Estamos quase lá! Como é o *seu nome completo*? 😊' },
     { key: 'phone', type: 'phone', placeholder: '(DDD) número', validate: (v) => v.replace(/\D/g, '').length >= 10 || 'Hmm, me passa um número válido com DDD 📲',
-      bia: () => 'Por último: qual seu *WhatsApp (com DDD)*? É só pra eu guardar seu contato e você não perder a sua música 📲' },
+      bia: () => 'Qual seu *WhatsApp (com DDD)*? É só pra eu guardar seu contato e você não perder a sua música 📲' },
+    { key: 'email', type: 'text', placeholder: 'seu@email.com',
+      // Email aceito = qualquer formato valid. Sugere correção pra typos comuns
+      // (gmal/gmial/hotmal/yaho/outloo). NÃO usa pra entrega ainda (Entrega 2);
+      // por enquanto vai pro CAPI hashed (em) pra melhorar Match Quality Meta.
+      validate: (v) => {
+        const s = String(v || '').trim().toLowerCase()
+        if (!s) return 'Preciso do seu *e-mail* 😊'
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) return 'Hmm, esse e-mail parece incompleto. Confere por favor 📧'
+        // typos comuns — sugestão suave
+        const typoFixes = [
+          [/@gmal\./, '@gmail.'], [/@gmial\./, '@gmail.'], [/@gmai\./, '@gmail.'],
+          [/@hotmal\./, '@hotmail.'], [/@hotnail\./, '@hotmail.'],
+          [/@yahooo\./, '@yahoo.'], [/@yaho\./, '@yahoo.'],
+          [/@outloo\./, '@outlook.'], [/@outllok\./, '@outlook.'],
+          [/\.con$/, '.com'], [/\.cm$/, '.com'], [/\.comm$/, '.com'],
+        ]
+        for (const [re, sub] of typoFixes) {
+          if (re.test(s)) return `Acho que você quis dizer "${s.replace(re, sub)}", confere?`
+        }
+        return true
+      },
+      bia: () => 'Por último, qual seu *e-mail*? Vou te mandar o link da música por lá também, assim você acessa quando quiser 💜' },
   ]
 
   const formatBia = (text) => String(text).split(/(\*[^*]+\*)/g).map((p, i) =>
@@ -3237,7 +3268,7 @@ export default function App() {
   }
 
   // mapeia chaves do chat -> colunas do banco (persistência incremental)
-  const DB_FIELD = { honoreeName: 'honoree_name', relationship: 'relationship', occasion: 'occasion', story: 'story', genre: 'genre', mood: 'mood', voice: 'voice_preference', clientName: 'customer_name', phone: 'phone' }
+  const DB_FIELD = { honoreeName: 'honoree_name', relationship: 'relationship', occasion: 'occasion', story: 'story', genre: 'genre', mood: 'mood', voice: 'voice_preference', clientName: 'customer_name', phone: 'phone', email: 'customer_email' }
   // cria o pedido-rascunho UMA vez (quando a história chega) e mantém atualizado no Supabase
   const ensureDraftOrder = async (d) => {
     if (draftRef.current) { apiOrderUpdate(draftRef.current, { story: d.story }); return draftRef.current }
@@ -3386,12 +3417,15 @@ export default function App() {
       if (orderId) {
         // REUSA o rascunho criado durante a conversa — só completa os campos finais
         await apiOrderUpdate(orderId, {
-          phone: cleanPhone, customer_name: d.clientName || null, genre: d.genre || null, mood: d.mood || null,
+          phone: cleanPhone, customer_name: d.clientName || null,
+          customer_email: (d.email || '').trim().toLowerCase() || null,
+          genre: d.genre || null, mood: d.mood || null,
           voice_preference: d.voice || null, style_raw: `${d.genre} | ${d.mood} | ${d.voice}`,
         })
       } else {
         const created = await apiCreateOrder({
           phone: cleanPhone, honoree_name: d.honoreeName, customer_name: d.clientName || null,
+          customer_email: (d.email || '').trim().toLowerCase() || null,
           occasion: d.occasion || null, story: d.story || null,
           style_raw: `${d.genre} | ${d.mood} | ${d.voice}`, genre: d.genre || null, mood: d.mood || null,
           voice: d.voice || null, relationship: d.relationship || null,
@@ -3402,6 +3436,9 @@ export default function App() {
         setCurrentOrderId(orderId)
         const so = { id: orderId, honoreeName: d.honoreeName, plan: d.plan, planName: d.planName, planPrice: d.planPrice }
         saveOrderLocal(so); setSavedOrder(so)
+        // Salva customer (phone + name + email) no localStorage pra recorrente.
+        // Reduz fricção no próximo pedido: pré-preenche os 3 campos.
+        try { saveCustomer({ phone: cleanPhone, name: d.clientName || '', email: (d.email || '').trim().toLowerCase() }) } catch (_) {}
       }
     } catch (_) {}
     try {
