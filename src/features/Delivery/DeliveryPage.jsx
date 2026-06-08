@@ -1,26 +1,23 @@
-// Pagina de entrega standalone — abre quando a URL e /p/:id.
+// Pagina de entrega standalone — aberta em /p/:id.
 // Mostra TODAS as versoes do audio (full_audio_urls) + video + downloads
 // + botao "Compartilhar" via Web Share API com arquivos (anexa midia nativa
 // no WhatsApp). Fallback: baixa o arquivo e instrui a anexar manualmente.
+//
+// Migrada da raiz `src/DeliveryPage.jsx` pra `features/Delivery/` na Fase 5
+// do refactor. Mudancas:
+//   - getOrderId() regex removido — usa useParams() do react-router-dom
+//   - safeFilename importado de core/utils (Fase 1)
+//   - poster do video extraido pra hook useVideoPoster (limpa o componente)
+//   - fetch de order foi pra api/deliveryService
 import React, { useEffect, useState } from 'react'
-
-const API_URL = 'https://suno-api-novo.bvph.uk'
-
-function getOrderId() {
-  const m = window.location.pathname.match(/^\/p\/([a-f0-9-]{8,})/i)
-  return m ? m[1] : null
-}
-
-function safeFilename(name, ext, suffix) {
-  const clean = String(name || 'musica')
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-zA-Z0-9 _-]/g, '').trim().replace(/\s+/g, '_').slice(0, 40)
-  return `Para_${clean || 'voce'}${suffix ? '_' + suffix : ''}.${ext}`
-}
+import { useParams } from 'react-router-dom'
+import { safeFilename } from '../../core/utils'
+import { useVideoPoster } from './hooks/useVideoPoster'
+import { fetchOrderStatus } from './api/deliveryService'
 
 // Detecta suporte a compartilhar arquivos via Web Share API.
 // Em mobile (Android Chrome, iOS Safari 15+) compartilha o ARQUIVO direto
-// pro WhatsApp (áudio/vídeo nativo). Em desktop costuma cair no fallback.
+// pro WhatsApp (audio/video nativo). Em desktop costuma cair no fallback.
 function canShareFiles() {
   try {
     if (!navigator.canShare) return false
@@ -41,59 +38,23 @@ function downloadFile(url, filename) {
 }
 
 export default function DeliveryPage() {
-  const id = getOrderId()
+  const { id } = useParams()
   const [data, setData] = useState(null)
   const [err, setErr] = useState(null)
-  const [videoPoster, setVideoPoster] = useState(null)
-  // Estado de loading + mensagem por item
-  // { [key]: { loading: bool, msg: string | null } }
   const [shareState, setShareState] = useState({})
   const setShare = (key, patch) => setShareState(prev => ({ ...prev, [key]: { ...prev[key], ...patch } }))
 
   useEffect(() => {
     if (!id) { setErr('Link inválido. Verifique a URL.'); return }
-    fetch(`${API_URL}/api/order/${id}/status`)
-      .then(r => r.ok ? r.json() : Promise.reject(`${r.status}`))
-      .then(setData)
-      .catch(() => setErr('Não conseguimos carregar seu pedido. Tente atualizar a página.'))
+    fetchOrderStatus(id)
+      .then(o => {
+        if (o) setData(o)
+        else setErr('Não conseguimos carregar seu pedido. Tente atualizar a página.')
+      })
   }, [id])
 
-  // Poster do video extraido do primeiro frame via canvas (resolve a tela
-  // cinza do iOS Safari quando preload=metadata). Se CORS bloquear, fica
-  // null silenciosamente.
-  useEffect(() => {
-    const videoUrl = data?.video_brinde_url
-    if (!videoUrl) return
-    const v = document.createElement('video')
-    v.crossOrigin = 'anonymous'
-    v.muted = true
-    v.playsInline = true
-    v.preload = 'auto'
-    let cancelled = false
-    const cleanup = () => { try { v.src = ''; v.load() } catch (_) {} }
-    v.onloadeddata = () => {
-      if (cancelled) return
-      try { v.currentTime = Math.min(0.5, (v.duration || 1) * 0.05) } catch (_) {}
-    }
-    v.onseeked = () => {
-      if (cancelled) return cleanup()
-      try {
-        const canvas = document.createElement('canvas')
-        canvas.width = v.videoWidth
-        canvas.height = v.videoHeight
-        canvas.getContext('2d').drawImage(v, 0, 0, v.videoWidth, v.videoHeight)
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.7)
-        if (!cancelled) setVideoPoster(dataUrl)
-      } catch (_) { /* CORS — silencioso */ }
-      cleanup()
-    }
-    v.onerror = cleanup
-    v.src = videoUrl
-    return () => { cancelled = true; cleanup() }
-  }, [data?.video_brinde_url])
+  const videoPoster = useVideoPoster(data?.video_brinde_url)
 
-  // Compartilha o arquivo via Web Share API. Em mobile = mídia nativa
-  // no WhatsApp. Fallback (desktop, CORS, browser antigo) = download.
   async function handleShare(key, url, filename, mimeType, label) {
     if (shareState[key]?.loading) return
     setShare(key, { loading: true, msg: null })
