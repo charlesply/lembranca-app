@@ -1,24 +1,21 @@
-// Pagina standalone de PAGAMENTO/FINALIZACAO — abre quando a URL e
-// /finalizar/:id. Util pra:
+// Pagina standalone de PAGAMENTO/FINALIZACAO — aberta em /finalizar/:id.
+// Util pra:
 //   1) Cliente que perdeu a tela do chat e quer voltar pro PIX
 //   2) Recuperacao de carrinho via WhatsApp/email com link direto
 //   3) Cobranca manual de orders preview_sent
 //
-// Fluxo:
-//   - Carrega order via /api/order/:id/status
-//   - Se ja paid → redireciona pra /p/:id
-//   - Mostra previa + escolha plano + gera PIX
-//   - Polling /api/pay/status a cada 4s detecta pagamento → /p/:id
-import React, { useEffect, useState, useRef, useCallback } from 'react'
-import { API_URL } from './core/infra'
+// Migrada de src/PaymentPage.jsx pra features/Payment/ na Fase 6 do refactor.
+// Mudancas:
+//   - getOrderId() regex REMOVIDO -> useParams() do router
+//   - fetchs centralizados em api/paymentService
+//   - polling extraido pra hook usePixPolling
+import React, { useEffect, useState, useCallback } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { fetchOrderStatus, createPix } from './api/paymentService'
+import { usePixPolling } from './hooks/usePixPolling'
 
-function getOrderId() {
-  const m = window.location.pathname.match(/^\/finalizar\/([a-f0-9-]{8,})/i)
-  return m ? m[1] : null
-}
-
-// Ordem importa: o primeiro fica em cima na UI. Completa é o destaque (badge
-// "Mais escolhido") e o default pré-selecionado.
+// Ordem importa: o primeiro fica em cima na UI. Completa e o destaque (badge
+// "Mais escolhido") e o default pre-selecionado.
 const PLANS = [
   {
     key: 'completa',
@@ -37,69 +34,46 @@ const PLANS = [
 ]
 
 export default function PaymentPage() {
-  const id = getOrderId()
+  const { id } = useParams()
+  const navigate = useNavigate()
   const [order, setOrder] = useState(null)
   const [err, setErr] = useState(null)
-  // Default: completa (R$29,90) — plano mais escolhido e melhor margem.
-  // Se a order já tinha um plan salvo do quiz, respeitamos (cliente já decidiu).
   const [plan, setPlan] = useState('completa')
-  const [pix, setPix] = useState(null)         // { brCode, brCodeBase64, expiresAt }
+  const [pix, setPix] = useState(null)
   const [loadingPix, setLoadingPix] = useState(false)
   const [copied, setCopied] = useState(false)
   const [confirming, setConfirming] = useState(false)
-  const pollRef = useRef(null)
 
   // 1) Carrega dados da order
   useEffect(() => {
     if (!id) { setErr('Link inválido — verifique a URL.'); return }
-    fetch(`${API_URL}/api/order/${id}/status`)
-      .then(r => r.ok ? r.json() : Promise.reject(r.status))
-      .then(o => {
-        if (o.status === 'paid' || o.paid_at) {
-          // Já pagou — redireciona pra entrega
-          window.location.replace(`/p/${id}`)
-          return
-        }
-        setOrder(o)
-        // Se já tinha plano escolhido (veio do quiz), respeitamos.
-        // Senão mantém o default (completa).
-        if (o.plan && PLANS.some(p => p.key === o.plan)) setPlan(o.plan)
-      })
-      .catch(() => setErr('Não conseguimos carregar seu pedido. Confirma o link com a gente.'))
-  }, [id])
+    fetchOrderStatus(id).then(o => {
+      if (!o) { setErr('Não conseguimos carregar seu pedido. Confirma o link com a gente.'); return }
+      if (o.status === 'paid' || o.paid_at) {
+        navigate(`/p/${id}`, { replace: true })
+        return
+      }
+      setOrder(o)
+      if (o.plan && PLANS.some(p => p.key === o.plan)) setPlan(o.plan)
+    })
+  }, [id, navigate])
 
-  // 2) Polling de pagamento — começa quando há PIX ativo
-  useEffect(() => {
-    if (!pix || !id) return
-    const tick = async () => {
-      try {
-        const r = await fetch(`${API_URL}/api/pay/status?orderId=${encodeURIComponent(id)}`)
-        const data = await r.json()
-        if (data?.paid) {
-          setConfirming(true)
-          // Pequena espera pro user ver "confirmando" antes do redirect
-          setTimeout(() => window.location.replace(`/p/${id}`), 1200)
-          return true
-        }
-      } catch (_) {}
-      return false
-    }
-    // Tenta na hora e depois a cada 4s
-    tick()
-    pollRef.current = setInterval(tick, 4000)
-    return () => { if (pollRef.current) clearInterval(pollRef.current) }
-  }, [pix, id])
+  // 2) Polling de pagamento (hook isolado)
+  usePixPolling({
+    orderId: id,
+    hasPix: !!pix,
+    onPaid: () => {
+      setConfirming(true)
+      setTimeout(() => navigate(`/p/${id}`, { replace: true }), 1200)
+    },
+  })
 
   const generatePix = useCallback(async () => {
     if (!id) return
     setLoadingPix(true); setPix(null); setCopied(false)
     try {
-      const r = await fetch(`${API_URL}/api/pay/create`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId: id, plan }),
-      })
-      const data = await r.json()
-      if (!r.ok || !data?.brCode) throw new Error(data?.error || 'falha')
+      const data = await createPix(id, plan)
+      if (!data?.brCode) throw new Error('falha')
       setPix({ brCode: data.brCode, brCodeBase64: data.brCodeBase64, expiresAt: data.expiresAt })
     } catch (e) {
       setErr('Não conseguimos gerar o PIX agora. Tenta de novo em alguns segundos.')
@@ -114,7 +88,6 @@ export default function PaymentPage() {
       await navigator.clipboard.writeText(pix.brCode)
       setCopied(true); setTimeout(() => setCopied(false), 2500)
     } catch {
-      // fallback: select + execCommand
       const ta = document.createElement('textarea')
       ta.value = pix.brCode; document.body.appendChild(ta); ta.select()
       try { document.execCommand('copy'); setCopied(true); setTimeout(() => setCopied(false), 2500) } catch (_) {}

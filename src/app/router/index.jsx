@@ -13,7 +13,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import App from '../../App.jsx'
 import { DeliveryPage } from '../../features/Delivery'
-import PaymentPage from '../../PaymentPage.jsx'
+import { PaymentPage } from '../../features/Payment'
 
 export default function AppRouter() {
   return (
