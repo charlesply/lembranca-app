@@ -12,7 +12,7 @@
 // atual onde a UI controla o que mostrar via state interno.
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import App from '../../App.jsx'
-import DeliveryPage from '../../DeliveryPage.jsx'
+import { DeliveryPage } from '../../features/Delivery'
 import PaymentPage from '../../PaymentPage.jsx'
 
 export default function AppRouter() {
