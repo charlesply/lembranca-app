@@ -44,7 +44,22 @@ features/X/
 └── types.ts       Tipos da feature (futuro: TypeScript)
 ```
 
+## Nota sobre `core/ui/`
+
+O design system já existe em **`src/components/ui/`** (28 componentes TSX:
+Button, Card, Input, Modal, Accordion, etc.). Por ser uma library já
+isolada e madura, **NÃO criamos pasta nova `src/core/ui/`** — a pasta
+`components/ui/` cumpre o papel do "core/ui" do FSD.
+
+Quando uma feature precisar de componente burro, importa de
+`@/components/ui/X` (ou caminho relativo). Pra fim de arquitetura,
+considerar `components/ui/` ≡ `core/ui/`.
+
 ## Histórico
 
 - 2026-06-08: Refatoração iniciada (branch `refactor/feature-sliced`)
   - Fase 0: setup base ✅
+  - Fase 1: extrair utils puros (safeFilename, sleep, currency) ✅
+  - Fase 2: extrair infra (analytics, api) ✅
+  - Fase 3: skipped — `components/ui/` já cumpre o papel
+  - Fase 4: React Router (próxima)
