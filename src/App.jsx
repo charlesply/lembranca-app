@@ -4,7 +4,7 @@ import { Quiz } from './features/Quiz'
 // PixPaymentModal + PLAN_DETAILS extraídos pra features/Payment na Fase A pós-merge
 import { PixPaymentModal, PLAN_DETAILS } from './features/Payment'
 // Landing — Countdown da oferta + Typewriter do hero (Fase B)
-import { Countdown, Typewriter, HERO_TYPED_PHRASES, PreviewCarousel } from './features/Landing'
+import { Countdown, Typewriter, HERO_TYPED_PHRASES, PreviewCarousel, FaqSection } from './features/Landing'
 // Ícones compartilhados (Lucide stroke=currentColor) — extraídos na Fase B.2
 import {
   WhatsAppIcon, InstaIcon,
@@ -3106,16 +3106,7 @@ export default function App() {
   ]
 
   /* ── FAQ ── */
-  const faqs = [
-    { q: 'Como funciona a Lembrança Cantada?', a: 'Você conta a história, escolhe estilo e voz, e o nosso estúdio transforma tudo numa música personalizada. Em minutos você recebe uma prévia gratuita pra ouvir antes de decidir.' },
-    { q: 'Quanto tempo demora pra ficar pronta?', a: 'Na maioria das vezes a prévia fica pronta em poucos minutos. A versão completa é liberada logo após a confirmação do pagamento.' },
-    { q: 'Consigo ouvir antes de pagar?', a: 'Sim! Você recebe uma prévia gratuita da música. Só paga se gostar — sem compromisso nenhum.' },
-    { q: 'Posso escolher a voz e o estilo?', a: 'Com certeza. Você escolhe o gênero musical, o clima e se a voz é masculina ou feminina. Tudo do seu jeito.' },
-    { q: 'Como eu recebo a música?', a: 'A prévia e a versão completa ficam disponíveis aqui mesmo no site pra você baixar em MP3. Se escolher o plano com vídeo karaokê (R$ 29,90), o vídeo também aparece pronto pra baixar.' },
-    { q: 'E se eu quiser alterar algo na música?', a: 'Dá pra ajustar! Alterações na música têm um pequeno custo adicional e a gente refaz pra ficar do jeitinho que você quer.' },
-    { q: 'Como faço o pagamento?', a: 'O pagamento é por PIX, rápido e seguro. Depois é só enviar o comprovante no WhatsApp que a gente libera tudo na hora.' },
-    { q: 'Posso mandar a história por áudio?', a: 'Pode sim! É só gravar um áudio contando a história que a gente transcreve e usa tudo na composição da música.' },
-  ]
+  // faqs array movido pra features/Landing/components/FaqSection.jsx na Fase B.3.2
 
   const exploreLinks = ['Música para namorada', 'Música para namorado', 'Música para mãe', 'Música para pai', 'Música de aniversário', 'Música de casamento', 'Música para amiga', 'Música para filho(a)']
 
@@ -3818,30 +3809,11 @@ export default function App() {
           </section>
 
           {/* ═══ FAQ ═══ */}
-          <section className="faq" id="faq">
-            <div className="container faq-grid">
-              <div className="faq-aside">
-                <Pill tone="accent">PERGUNTAS FREQUENTES</Pill>
-                <h2 className="section-title" style={{ textAlign: 'left' }}>Tire suas <span className="accent-text">dúvidas</span></h2>
-                <p className="faq-aside-text">Não encontrou sua pergunta? Fala com a gente, respondemos rapidinho. 💜</p>
-                <a href={`https://wa.me/${BIA_PHONE}`} target="_blank" rel="noopener noreferrer" className="faq-contact">
-                  <span className="faq-contact-ic"><WhatsAppIcon /></span>
-                  <div><div className="faq-contact-t">WhatsApp</div><div className="faq-contact-s">Resposta na hora</div></div>
-                </a>
-                <a href={INSTAGRAM} target="_blank" rel="noopener noreferrer" className="faq-contact">
-                  <span className="faq-contact-ic"><InstaIcon /></span>
-                  <div><div className="faq-contact-t">Instagram</div><div className="faq-contact-s">@historiascantadasbr</div></div>
-                </a>
-                <button className="btn-primary" onClick={scrollToForm}>Criar minha música →</button>
-              </div>
-              <div className="faq-list">
-                {/* Accordion do DS (src/components/ui/Accordion) — substitui o
-                    custom +/− carret. Open/close interno, animacao + tokens
-                    da marca consistentes com o resto do app. */}
-                <Accordion items={faqs} />
-              </div>
-            </div>
-          </section>
+          <FaqSection
+            biaPhone={BIA_PHONE}
+            instagramUrl={INSTAGRAM}
+            onScrollToForm={scrollToForm}
+          />
 
           {/* ═══ EXPLORE MAIS ═══ */}
           <section className="explore">
