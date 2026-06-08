@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import Quiz from './Quiz'
+import { Quiz } from './features/Quiz'
 // Utils puros extraidos pra core/utils (refactor Fase 1)
 import { priceToNum, fmtBRL, sleep } from './core/utils'
 // Infra (analytics, api wrappers) — refactor Fase 2
