@@ -18,16 +18,32 @@ function getOrderId() {
   return m ? m[1] : null
 }
 
-const PLANS = {
-  musica:   { label: 'Só a Música', price: 19.90, badge: 'Mais escolhido', detail: '2 versões da música em alta qualidade pra você escolher' },
-  completa: { label: 'Música + Vídeo', price: 29.90, badge: 'Recomendado',  detail: '2 versões da música + vídeo com a letra (perfeito pra postar)' },
-}
+// Ordem importa: o primeiro fica em cima na UI. Completa é o destaque (badge
+// "Mais escolhido") e o default pré-selecionado.
+const PLANS = [
+  {
+    key: 'completa',
+    label: 'Música + Vídeo (estilo Spotify)',
+    price: 29.90,
+    badge: 'Mais escolhido',
+    detail: '2 versões da música + vídeo com a letra (perfeito pra postar)',
+  },
+  {
+    key: 'musica',
+    label: 'Só a Música',
+    price: 19.90,
+    badge: null,
+    detail: '2 versões da música em alta qualidade pra você escolher',
+  },
+]
 
 export default function PaymentPage() {
   const id = getOrderId()
   const [order, setOrder] = useState(null)
   const [err, setErr] = useState(null)
-  const [plan, setPlan] = useState('musica')
+  // Default: completa (R$29,90) — plano mais escolhido e melhor margem.
+  // Se a order já tinha um plan salvo do quiz, respeitamos (cliente já decidiu).
+  const [plan, setPlan] = useState('completa')
   const [pix, setPix] = useState(null)         // { brCode, brCodeBase64, expiresAt }
   const [loadingPix, setLoadingPix] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -46,8 +62,9 @@ export default function PaymentPage() {
           return
         }
         setOrder(o)
-        // Default pro plano se ele já tava escolhido antes
-        if (o.plan && PLANS[o.plan]) setPlan(o.plan)
+        // Se já tinha plano escolhido (veio do quiz), respeitamos.
+        // Senão mantém o default (completa).
+        if (o.plan && PLANS.some(p => p.key === o.plan)) setPlan(o.plan)
       })
       .catch(() => setErr('Não conseguimos carregar seu pedido. Confirma o link com a gente.'))
   }, [id])
@@ -134,10 +151,10 @@ export default function PaymentPage() {
           <section className="pp-section">
             <h2>📦 Escolha seu pacote</h2>
             <div className="pp-plans">
-              {Object.entries(PLANS).map(([key, p]) => (
-                <button key={key} type="button"
-                        className={`pp-plan ${plan === key ? 'pp-plan-selected' : ''}`}
-                        onClick={() => setPlan(key)}>
+              {PLANS.map((p) => (
+                <button key={p.key} type="button"
+                        className={`pp-plan ${plan === p.key ? 'pp-plan-selected' : ''}`}
+                        onClick={() => setPlan(p.key)}>
                   {p.badge && <span className="pp-plan-badge">{p.badge}</span>}
                   <div className="pp-plan-label">{p.label}</div>
                   <div className="pp-plan-price">R$ {p.price.toFixed(2).replace('.', ',')}</div>
@@ -146,7 +163,7 @@ export default function PaymentPage() {
               ))}
             </div>
             <button className="pp-btn pp-btn-primary" onClick={generatePix} disabled={loadingPix}>
-              {loadingPix ? 'Gerando PIX…' : `Gerar PIX de R$ ${PLANS[plan].price.toFixed(2).replace('.', ',')}`}
+              {loadingPix ? 'Gerando PIX…' : `Gerar PIX de R$ ${(PLANS.find(p => p.key === plan)?.price || 0).toFixed(2).replace('.', ',')}`}
             </button>
           </section>
         )}
