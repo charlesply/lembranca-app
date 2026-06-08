@@ -1237,7 +1237,7 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
   )
 }
 
-function PreviewResultView({ resultData, onBuy, onSendProof, paymentSeen, onWhatsApp, onNew, payLoading }) {
+function PreviewResultView({ resultData, onBuy, onWhatsApp, onNew, payLoading }) {
   const fullDuration = resultData?.fullDurationSec || 189 // 3:09
   const previewLimit = resultData?.previewLimitSec || 50  // 0:50
 
@@ -1484,24 +1484,6 @@ function PreviewResultView({ resultData, onBuy, onSendProof, paymentSeen, onWhat
             <p className="locked-card-foot">
               R$ 19,90 ou R$ 29,90 · Pix · liberação imediata
             </p>
-            {/* Atalho secundário: aparece SÓ depois que o cliente abriu o modal
-                pelo menos uma vez (sinal de "estou indo pagar agora"). Reabre
-                o modal direto na tela de upload do comprovante — pra quem fez
-                o Pix em outro app e voltou. */}
-            {paymentSeen && (
-              <button type="button" className="locked-card-proof"
-                onClick={() => onSendProof && onSendProof(resultData?.orderId)}>
-                <span className="locked-card-proof-icon" aria-hidden="true">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12"/>
-                  </svg>
-                </span>
-                <span className="locked-card-proof-text">Já paguei · enviar comprovante</span>
-                <svg className="locked-card-proof-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <polyline points="9 18 15 12 9 6"/>
-                </svg>
-              </button>
-            )}
           </article>
         )}
 
@@ -1994,17 +1976,8 @@ export default function App() {
 
   // Modal PIX (sem InfinitePay) — abre com QR + chave PIX + botão copiar
   const [pixModal, setPixModal] = useState(null)   // { orderId, plan, honoreeName, startAt } | null
-  // Marca se o cliente já viu o modal pelo menos uma vez nessa sessão. Quando
-  // true, mostramos um CTA secundário "Já paguei · enviar comprovante" no card
-  // bloqueado pra quem voltou do app do banco.
-  const [paymentSeen, setPaymentSeen] = useState(() => {
-    try { return sessionStorage.getItem('hc_pix_seen') === '1' } catch (_) { return false }
-  })
 
   // Inicia o pagamento — agora abre o modal PIX manual (em vez de redirecionar).
-  // `paymentSeen` NÃO é marcado aqui: queremos que o CTA secundário do card
-  // ("Já paguei · enviar comprovante") apareça SÓ depois que o cliente FECHAR
-  // o modal pela primeira vez — sinal forte de "fui pagar e voltei".
   const startPayment = (orderId, plan, startAt) => {
     if (!orderId) { alert('Pedido não encontrado, refaça a música 💜'); return }
     const val = PLAN_VALUES[plan] || PLAN_VALUES.musica
@@ -2021,16 +1994,7 @@ export default function App() {
       startAt: startAt || 'plan',   // default agora abre na escolha do plano
     })
   }
-  // Quando o cliente fecha o modal, marcamos como "viu" — daí aparece o CTA
-  // secundário no card pra ele voltar e mandar o comprovante.
-  const closePixModal = () => {
-    setPixModal(null)
-    try { sessionStorage.setItem('hc_pix_seen', '1') } catch (_) {}
-    setPaymentSeen(true)
-  }
-  // Atalho: cliente clicou em "Já paguei" no card da página → reabre direto na
-  // tela de upload do comprovante.
-  const openProofUpload = (orderId) => startPayment(orderId, 'musica', 'upload')
+  const closePixModal = () => setPixModal(null)
   const BIA_PHONE = '5511920188319'
   const INSTAGRAM = 'https://instagram.com/historiascantadasbr'
   const WHATSAPP = `https://wa.me/${'5511920188319'}`
@@ -4150,8 +4114,6 @@ export default function App() {
           <PreviewResultView
             resultData={resultData}
             payLoading={payLoading}
-            paymentSeen={paymentSeen}
-            onSendProof={openProofUpload}
             onBuy={(orderId) => startPayment(orderId, 'musica')}
             onWhatsApp={() => {
               const text = resultData.orderId
