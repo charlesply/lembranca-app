@@ -3,23 +3,28 @@
 Este projeto segue uma versão adaptada do **Feature-Sliced Design (FSD)**
 pra dar isolamento entre features e clareza de responsabilidades.
 
-## Estrutura
+## Estrutura atual
 
 ```
 src/
-├── app/               Setup global (router, providers, styles)
-├── core/              Código compartilhado e genérico
-│   ├── infra/         Comunicação externa (api, analytics, storage)
-│   ├── ui/            Componentes burros reusáveis (Button, Card, Input)
-│   └── utils/         Funções puras (formatters, masks)
-├── features/          Lógica de negócio isolada por feature
-│   ├── Quiz/          Funnel TypeForm
-│   ├── Chat/          Bia conversacional
-│   ├── Payment/       PaymentPage + PIX
-│   ├── Delivery/      /p/:id (player + share)
-│   ├── Recovery/      /minhas-musicas (Entrega 3 futura)
-│   └── Admin/         Dashboard
-└── pages/             Páginas que só montam o layout
+├── app/                 ✅ Setup global
+│   └── router/          ✅ React Router (substitui o regex manual antigo)
+├── core/                ✅ Código compartilhado e genérico
+│   ├── infra/           ✅ analytics.js, api.js (API_URL + apiGet/apiPost)
+│   ├── ui/              ⚠️  Vide nota abaixo
+│   └── utils/           ✅ safeFilename, sleep, currency, etc
+├── features/
+│   ├── Quiz/            ✅ Quiz.jsx + quizConfig.js
+│   ├── Payment/         ✅ PaymentPage + api/paymentService + hooks/usePixPolling
+│   ├── Delivery/        ✅ DeliveryPage + api/deliveryService + hooks/useVideoPoster
+│   ├── Chat/            ⏳ FUTURO — atualmente embutido em App.jsx
+│   ├── Admin/           ⏳ FUTURO — atualmente embutido em App.jsx
+│   └── Recovery/        ⏳ FUTURO — Portal "Minhas Músicas" (Entrega 3)
+├── components/
+│   └── ui/              ✅ Design system (Button, Card, Input, Modal, etc — 28 TSX)
+├── pages/               ⏳ FUTURO — quando Chat/Admin sairem do App.jsx
+├── App.jsx              ⚠️  Ainda contém Chat + Admin + Landing (refactor futuro)
+└── main.jsx             ✅ Monta o AppRouter
 ```
 
 ## Regras de dependência
@@ -46,20 +51,37 @@ features/X/
 
 ## Nota sobre `core/ui/`
 
-O design system já existe em **`src/components/ui/`** (28 componentes TSX:
+O design system existe em **`src/components/ui/`** (28 componentes TSX:
 Button, Card, Input, Modal, Accordion, etc.). Por ser uma library já
-isolada e madura, **NÃO criamos pasta nova `src/core/ui/`** — a pasta
-`components/ui/` cumpre o papel do "core/ui" do FSD.
+isolada e madura, **NÃO foi criado `src/core/ui/` separado**.
 
-Quando uma feature precisar de componente burro, importa de
-`@/components/ui/X` (ou caminho relativo). Pra fim de arquitetura,
-considerar `components/ui/` ≡ `core/ui/`.
+Pra fim de arquitetura, considerar `components/ui/` ≡ `core/ui/`.
 
-## Histórico
+## Histórico do refactor (branch `refactor/feature-sliced`)
 
-- 2026-06-08: Refatoração iniciada (branch `refactor/feature-sliced`)
-  - Fase 0: setup base ✅
-  - Fase 1: extrair utils puros (safeFilename, sleep, currency) ✅
-  - Fase 2: extrair infra (analytics, api) ✅
-  - Fase 3: skipped — `components/ui/` já cumpre o papel
-  - Fase 4: React Router (próxima)
+| Fase | Status | O que mudou |
+|---|---|---|
+| 0 | ✅ | Setup base: react-router-dom + estrutura de pastas + README |
+| 1 | ✅ | core/utils: safeFilename, sleep, priceToNum, fmtBRL |
+| 2 | ✅ | core/infra: analytics + api (API_URL, apiGet, apiPost) |
+| 3 | ⏭️ | skip — components/ui já cumpre o papel |
+| 4 | ✅ | React Router substitui regex de pathname em main.jsx |
+| 5 | ✅ | features/Delivery (DeliveryPage + service + hook useVideoPoster) |
+| 6 | ✅ | features/Payment (PaymentPage + service + hook usePixPolling) |
+| 7 | ✅ | features/Quiz (Quiz.jsx + quizConfig.js movidos) |
+| 8 | ⏳ | features/Chat — adiado (desacoplar do App.jsx é grande, ~3-5h) |
+| 9 | ⏳ | features/Admin — adiado (mesmo motivo) |
+| 10 | ✅ | Cleanup + README + smoke test final |
+
+## Próximos passos sugeridos (quando voltar)
+
+1. **Extrair Chat do App.jsx pra `features/Chat/`** — o chat com a Bia
+   tem state acoplado a 30+ pieces do App. Estratégia: ChatProvider
+   (Context) que expõe o state, depois Chat puro consome.
+2. **Extrair Admin do App.jsx pra `features/Admin/`** — mais simples
+   que Chat porque é tela isolada. Movê-la pra `features/Admin/` +
+   atualizar a rota.
+3. **TypeScript gradual** — começar pelos arquivos novos (services,
+   hooks, utils). Quando criar novo `.tsx`, ele já tipa correto.
+4. **Tests** — Vitest + React Testing Library, começar pelos hooks
+   (useVideoPoster, usePixPolling).
