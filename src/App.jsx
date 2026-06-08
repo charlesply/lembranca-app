@@ -4,7 +4,12 @@ import { Quiz } from './features/Quiz'
 // PixPaymentModal + PLAN_DETAILS extraídos pra features/Payment na Fase A pós-merge
 import { PixPaymentModal, PLAN_DETAILS } from './features/Payment'
 // Landing — Countdown da oferta + Typewriter do hero (Fase B)
-import { Countdown, Typewriter, HERO_TYPED_PHRASES } from './features/Landing'
+import {
+  Countdown, Typewriter, HERO_TYPED_PHRASES,
+  PreviewCarousel, FaqSection, HowItWorksSection,
+  PlansSection, TestimonialsSection,
+  LandingTopbar, BiaFab, PromoToast,
+} from './features/Landing'
 // Ícones compartilhados (Lucide stroke=currentColor) — extraídos na Fase B.2
 import {
   WhatsAppIcon, InstaIcon,
@@ -224,10 +229,7 @@ function clearOrderLocal() { try { localStorage.removeItem(HC_ORDER_KEY) } catch
 /* ── Icons ── */
 // Ícones (Lucide stroke=currentColor) — extraídos pra core/icons na Fase B.2
 
-const Waveform = () => {
-  const heights = [30,60,45,80,55,35,70,50,65,40,75,30]
-  return <div className="waveform">{heights.map((h,i) => <div key={i} className="wave-bar" style={{height:`${h}%`}} />)}</div>
-}
+// Waveform movido pra features/Landing/components/PreviewCarousel.jsx na Fase B.3.1
 
 /* ── Genre data ── */
 const GENRES = [
@@ -1841,10 +1843,8 @@ export default function App() {
     return () => { alive = false }
   }, [customer?.phone])
   const [openFaq, setOpenFaq] = useState(0)
-  const [previewIdx, setPreviewIdx] = useState(0)
-  const [previewPlaying, setPreviewPlaying] = useState(false)
-  const previewAudioRef = useRef(null)
-  const previewVideoRef = useRef(null)
+  // previewIdx/previewPlaying/previewAudioRef/previewVideoRef movidos pra
+  // PreviewCarousel (features/Landing/components) na Fase B.3.1.
   const heroVideoRef = useRef(null)
   const [payReturn, setPayReturn] = useState(null)   // retorno do InfinitePay: {status,orderId}
   const [payLoading, setPayLoading] = useState(false)
@@ -3079,54 +3079,12 @@ export default function App() {
     { icon: '✨', title: 'Única no mundo', text: 'Sua música é composta do zero a partir da história que você contar. Não existe outra igual — é uma obra feita só pra essa pessoa, pra guardar pra sempre.' },
     { icon: '⚡', title: 'Pronta rapidinho', text: 'Sem esperar dias. Você conta a história, escolhe o estilo e a voz, e em poucos minutos já ouve a prévia da sua canção.' }
   ]
-  const examples = [
-    { kind: 'video', title: 'Cristiane para João Paulo', meta: 'Sertanejo · Romântica', src: '/assets/previa/previa-web.mp4', poster: '/assets/previa/previa-poster.jpg' },
-    { kind: 'video', title: 'Para Edson', meta: 'Pagode · Homenagem', src: '/assets/previa/edson-web.mp4', poster: '/assets/previa/edson-poster.jpg' },
-    { kind: 'audio', title: 'Para Beatriz', meta: 'Sertanejo', src: '/assets/musicas/m1.mp3' },
-    { kind: 'audio', title: 'Para Camila', meta: 'Pop romântico', src: '/assets/musicas/m2.mp3' },
-    { kind: 'audio', title: 'Para Daniel', meta: 'Pagode', src: '/assets/musicas/m3.mp3' },
-    { kind: 'audio', title: 'Para Aldo', meta: 'MPB', src: '/assets/musicas/m4.mp3' },
-    { kind: 'audio', title: 'Para Eduardo', meta: 'Gospel', src: '/assets/musicas/m5.mp3' },
-    { kind: 'audio', title: 'Para Rafaela', meta: 'Sertanejo', src: '/assets/musicas/m6.mp3' },
-    { kind: 'audio', title: 'Para Vanessa', meta: 'Forró', src: '/assets/musicas/m7.mp3' },
-    { kind: 'audio', title: 'Para Yasmim', meta: 'Pop', src: '/assets/musicas/m8.mp3' },
-  ]
-  // ── Carrossel de prévias (vídeo + músicas reais) ──
-  const _stopPreview = () => {
-    try { previewAudioRef.current && previewAudioRef.current.pause() } catch (_) {}
-    try { previewVideoRef.current && previewVideoRef.current.pause() } catch (_) {}
-    setPreviewPlaying(false)
-  }
-  const selectPreview = (idx) => { _stopPreview(); setPreviewIdx(idx) }
-  const nextPreview = () => selectPreview((previewIdx + 1) % examples.length)
-  const prevPreview = () => selectPreview((previewIdx - 1 + examples.length) % examples.length)
-  const togglePreviewPlay = () => {
-    const ex = examples[previewIdx]
-    const el = ex.kind === 'video' ? previewVideoRef.current : previewAudioRef.current
-    if (!el) return
-    if (el.paused) { el.play().catch(() => {}) } else { el.pause() }
-  }
-  // auto-avança a cada 8s (pausa enquanto estiver tocando)
-  useEffect(() => {
-    if (view !== 'landing' || previewPlaying) return
-    const id = setInterval(() => setPreviewIdx(i => (i + 1) % examples.length), 8000)
-    return () => clearInterval(id)
-  }, [view, previewPlaying, examples.length])
+  // examples + handlers + auto-advance effect movidos pra PreviewCarousel na Fase B.3.1.
 
-  const testimonials = [
-    { initials: 'MC', name: 'Mariana Costa', loc: 'Rio de Janeiro, RJ', photo: 'https://randomuser.me/api/portraits/women/68.jpg', quote: '"Queria dar um presente único de aniversário. O estúdio criou uma música linda com nossos momentos juntos. Foi de longe o melhor presente que já dei!"' },
-    { initials: 'RL', name: 'Rafael Lima', loc: 'São Paulo, SP', photo: 'https://randomuser.me/api/portraits/men/32.jpg', quote: '"Fiz pra minha mãe no Dia das Mães. Ela chorou de emoção quando ouviu o nome dela na letra. Valeu cada centavo, recomendo muito!"' },
-    { initials: 'FS', name: 'Fernando Santos', loc: 'Belo Horizonte, MG', photo: 'https://randomuser.me/api/portraits/men/45.jpg', quote: '"A qualidade é impressionante. A música ficou profissional e super emocionante. Minha namorada amou!"' }
-  ]
+  // testimonials movido pra features/Landing/components/TestimonialsSection.jsx na Fase B.3.5
   const features = ['Música completa, sua e exclusiva', '2 versões da mesma letra pra você escolher', 'Vídeo de brinde pra postar nas redes 🎁', 'Entrega rápida e segura no WhatsApp', 'Arquivo em MP3 pra guardar pra sempre']
 
-  /* ── Como funciona (4 passos) ── */
-  const howSteps = [
-    { n: 1, title: 'Conte a sua história', text: 'Você nos diz pra quem é, a relação e os momentos especiais. Pode ser por texto ou por áudio — do seu jeito.' },
-    { n: 2, title: 'Personalize cada detalhe', text: 'Escolha o estilo musical, o clima e a voz (masculina ou feminina). A música fica com a sua cara.' },
-    { n: 3, title: 'Receba a prévia na hora', text: 'Em poucos minutos você ouve um trecho da música pronta, sem compromisso e sem pagar nada antes.' },
-    { n: 4, title: 'Emocione quem você ama', text: 'Liberou a versão completa, é seu pra guardar e mandar — fica pra sempre 💜' },
-  ]
+  // howSteps movido pra features/Landing/components/HowItWorksSection.jsx na Fase B.3.3
 
   /* ── Recursos (bento grid) ── */
   const featureBento = [
@@ -3137,22 +3095,10 @@ export default function App() {
   ]
 
   /* ── Planos ── */
-  const plans = [
-    { name: 'Música personalizada', planKey: 'musica', badge: null, featured: false, price: '19,90', desc: 'Sua história transformada em música, só sua 🎵', delivery: 'Pronta rapidinho', tagline: 'A canção perfeita pra emocionar quem você ama.', items: ['Música completa e exclusiva, feita da sua história', 'Voz e estilo à sua escolha', 'Arquivo em MP3 pra guardar pra sempre', 'Prévia e versão completa aqui no chat'] },
-    { name: 'Música + Vídeo Personalizado', planKey: 'completa', badge: 'MAIS COMPLETO', featured: true, price: '29,90', desc: 'A música + vídeo personalizado com a letra pra cantar no estilo karaokê 🎤', delivery: 'Pronta rapidinho', tagline: 'A música + um vídeo karaokê personalizado pra cantar e compartilhar.', items: ['Tudo do plano Música personalizada', '🎬 Vídeo personalizado no estilo karaokê (letra pra cantar junto) 🎤', 'Perfeito pra emocionar e postar nas redes', 'Prioridade na produção'] },
-  ]
+  // plans movido pra features/Landing/components/PlansSection.jsx na Fase B.3.4
 
   /* ── FAQ ── */
-  const faqs = [
-    { q: 'Como funciona a Lembrança Cantada?', a: 'Você conta a história, escolhe estilo e voz, e o nosso estúdio transforma tudo numa música personalizada. Em minutos você recebe uma prévia gratuita pra ouvir antes de decidir.' },
-    { q: 'Quanto tempo demora pra ficar pronta?', a: 'Na maioria das vezes a prévia fica pronta em poucos minutos. A versão completa é liberada logo após a confirmação do pagamento.' },
-    { q: 'Consigo ouvir antes de pagar?', a: 'Sim! Você recebe uma prévia gratuita da música. Só paga se gostar — sem compromisso nenhum.' },
-    { q: 'Posso escolher a voz e o estilo?', a: 'Com certeza. Você escolhe o gênero musical, o clima e se a voz é masculina ou feminina. Tudo do seu jeito.' },
-    { q: 'Como eu recebo a música?', a: 'A prévia e a versão completa ficam disponíveis aqui mesmo no site pra você baixar em MP3. Se escolher o plano com vídeo karaokê (R$ 29,90), o vídeo também aparece pronto pra baixar.' },
-    { q: 'E se eu quiser alterar algo na música?', a: 'Dá pra ajustar! Alterações na música têm um pequeno custo adicional e a gente refaz pra ficar do jeitinho que você quer.' },
-    { q: 'Como faço o pagamento?', a: 'O pagamento é por PIX, rápido e seguro. Depois é só enviar o comprovante no WhatsApp que a gente libera tudo na hora.' },
-    { q: 'Posso mandar a história por áudio?', a: 'Pode sim! É só gravar um áudio contando a história que a gente transcreve e usa tudo na composição da música.' },
-  ]
+  // faqs array movido pra features/Landing/components/FaqSection.jsx na Fase B.3.2
 
   const exploreLinks = ['Música para namorada', 'Música para namorado', 'Música para mãe', 'Música para pai', 'Música de aniversário', 'Música de casamento', 'Música para amiga', 'Música para filho(a)']
 
@@ -3327,14 +3273,7 @@ export default function App() {
     <>
       {/* ANNOUNCEMENT BAR */}
       {view === 'landing' && (
-        <div className="topbar topbar-offer">
-          <span className="topbar-proof"><IconGift s={14} /> +5.000 músicas já emocionaram</span>
-          <span className="topbar-mid">
-            <IconZap s={14} /> <span className="topbar-label">Oferta de lançamento:</span> <strong>R$&nbsp;19,90</strong>
-            <Countdown end={offerEnd} compact />
-          </span>
-          <button className="topbar-cta" onClick={scrollToForm}>Criar <span className="topbar-label">minha </span>música <IconArrowRight s={14} /></button>
-        </div>
+        <LandingTopbar offerEnd={offerEnd} onScrollToForm={scrollToForm} />
       )}
 
       {/* Banner cliente recorrente — só aparece se a gente já tem o cliente
@@ -3684,67 +3623,13 @@ export default function App() {
           </section>
 
           {/* ═══ COMO FUNCIONA — 4 passos ═══ */}
-          <section className="howitworks" id="como-funciona">
-            <div className="container">
-              <div className="section-header">
-                <Pill tone="accent">COMO FUNCIONA</Pill>
-                <h2 className="section-title">Crie uma música inesquecível em <span className="accent-text">4 passos simples</span></h2>
-                <p className="section-subtitle">Do jeito mais fácil possível: você conta, a gente compõe e emociona quem você ama.</p>
-              </div>
-              <div className="how-grid">
-                {howSteps.map(s => (
-                  <div key={s.n} className="how-card">
-                    <div className="how-num">{s.n}</div>
-                    <div className="how-img"><img src={`/assets/passos/passo-${s.n}.jpg`} alt={s.title} loading="lazy" /></div>
-                    <div className="how-title">{s.title}</div>
-                    <div className="how-text">{s.text}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
+          <HowItWorksSection />
 
           {/* ═══ PRÉVIA / OUÇA ANTES (carrossel) ═══ */}
-          <section className="preview-showcase" id="examples">
-            <div className="container preview-grid">
-              <div className="preview-visual">
-                <button className="carousel-arrow left" onClick={prevPreview} aria-label="Anterior">‹</button>
-                {examples[previewIdx].kind === 'video' ? (
-                  <video key={examples[previewIdx].src} ref={previewVideoRef} className="preview-video" src={examples[previewIdx].src} poster={examples[previewIdx].poster} controls playsInline preload="none"
-                    onPlay={() => setPreviewPlaying(true)} onPause={() => setPreviewPlaying(false)} onEnded={() => setPreviewPlaying(false)} />
-                ) : (
-                  <button className="song-cover" onClick={togglePreviewPlay} aria-label={previewPlaying ? 'Pausar' : 'Tocar'}>
-                    <div className="song-cover-art"><IconMusic s={38} /></div>
-                    <div className="song-cover-title">{examples[previewIdx].title}</div>
-                    <div className="song-cover-meta">{examples[previewIdx].meta}</div>
-                    <Waveform />
-                    <span className={`song-play${previewPlaying ? ' playing' : ''}`}>{previewPlaying ? <IconPause s={24} /> : <IconPlay s={24} />}</span>
-                  </button>
-                )}
-                <button className="carousel-arrow right" onClick={nextPreview} aria-label="Próximo">›</button>
-                <audio ref={previewAudioRef} src={examples[previewIdx].kind === 'audio' ? examples[previewIdx].src : undefined} preload="none"
-                  onPlay={() => setPreviewPlaying(true)} onPause={() => setPreviewPlaying(false)} onEnded={() => setPreviewPlaying(false)} />
-              </div>
-              <div className="preview-copy">
-                <Pill tone="accent">PRÉVIA GRATUITA</Pill>
-                <h2 className="section-title">Ouça trechos reais</h2>
-                <p className="section-subtitle" style={{ margin: '0 0 20px' }}>Músicas de clientes de verdade. Aperte o play e veja como fica emocionante — a sua vai ser assim, do seu jeito.</p>
-                <button className="example-mini" onClick={togglePreviewPlay}>
-                  <span className="play-btn">{previewPlaying ? <IconPause s={16} /> : <IconPlay s={15} />}</span>
-                  <div className="player-info">
-                    <div className="player-title">{examples[previewIdx].title}</div>
-                    <div className="player-meta">{examples[previewIdx].meta}</div>
-                  </div>
-                </button>
-                <div className="carousel-dots">
-                  {examples.map((_, i) => (
-                    <button key={i} className={`dot${i === previewIdx ? ' active' : ''}`} onClick={() => selectPreview(i)} aria-label={`Exemplo ${i + 1}`} />
-                  ))}
-                </div>
-                <button className="btn-primary auto-width" onClick={scrollToForm}>Criar a minha agora <IconArrowRight s={17} /></button>
-              </div>
-            </div>
-          </section>
+          <PreviewCarousel
+            active={view === 'landing'}
+            onScrollToForm={scrollToForm}
+          />
 
           {/* ═══ RECURSOS — bento grid ═══ */}
           <section className="features-bento">
@@ -3781,30 +3666,7 @@ export default function App() {
           </section>
 
           {/* ═══ DEPOIMENTOS ═══ */}
-          <section className="testimonials" id="testimonials">
-            <div className="container">
-              <div className="section-header">
-                <Pill tone="accent">DEPOIMENTOS</Pill>
-                <h2 className="section-title">O que nossos <span className="accent-text">clientes</span> dizem</h2>
-                <p className="section-subtitle">Lembranças reais de quem transformou sentimentos em música.</p>
-              </div>
-              <div className="testimonials-grid">
-                {testimonials.map(t => (
-                  <div key={t.name} className="testimonial-card">
-                    <div className="testimonial-stars">★★★★★</div>
-                    <div className="testimonial-quote">{t.quote}</div>
-                    <div className="testimonial-author">
-                      <div className="testimonial-avatar">{t.photo ? <img src={t.photo} alt={t.name} loading="lazy" /> : t.initials}</div>
-                      <div>
-                        <div className="testimonial-name">{t.name}</div>
-                        <div className="testimonial-location">{t.loc}</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
+          <TestimonialsSection />
 
           {/* ═══ OFERTA / ANCORAGEM DE VALOR ═══ */}
           <section className="offer-section">
@@ -3865,56 +3727,14 @@ export default function App() {
           </section>
 
           {/* ═══ PLANOS ═══ */}
-          <section className="plans" id="pricing">
-            <div className="container">
-              <div className="section-header">
-                <Pill tone="accent">PLANOS E PREÇOS</Pill>
-                <h2 className="section-title">Escolha o plano <span className="accent-text">ideal</span> pra você</h2>
-                <p className="section-subtitle">Pagamento único, sem mensalidade. Crie a sua música agora e surpreenda quem você ama.</p>
-              </div>
-              <div className="plans-grid">
-                {plans.map(p => (
-                  <div key={p.name} className={`plan-card${p.featured ? ' featured' : ''}`}>
-                    {p.badge && <div className="plan-badge">{p.badge}</div>}
-                    <div className="plan-name">{p.name}</div>
-                    <div className="plan-tagline">{p.tagline}</div>
-                    <div className="plan-price"><span className="plan-currency">R$</span>{p.price}</div>
-                    <div className="plan-delivery"><IconZap s={14} /> {p.delivery}</div>
-                    <div className="plan-items">
-                      {p.items.map(it => <div key={it} className="plan-item"><span className="check">✓</span> {it}</div>)}
-                    </div>
-                    <button className="btn-primary" onClick={scrollToForm}>Criar minha música →</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
+          <PlansSection onScrollToForm={scrollToForm} />
 
           {/* ═══ FAQ ═══ */}
-          <section className="faq" id="faq">
-            <div className="container faq-grid">
-              <div className="faq-aside">
-                <Pill tone="accent">PERGUNTAS FREQUENTES</Pill>
-                <h2 className="section-title" style={{ textAlign: 'left' }}>Tire suas <span className="accent-text">dúvidas</span></h2>
-                <p className="faq-aside-text">Não encontrou sua pergunta? Fala com a gente, respondemos rapidinho. 💜</p>
-                <a href={`https://wa.me/${BIA_PHONE}`} target="_blank" rel="noopener noreferrer" className="faq-contact">
-                  <span className="faq-contact-ic"><WhatsAppIcon /></span>
-                  <div><div className="faq-contact-t">WhatsApp</div><div className="faq-contact-s">Resposta na hora</div></div>
-                </a>
-                <a href={INSTAGRAM} target="_blank" rel="noopener noreferrer" className="faq-contact">
-                  <span className="faq-contact-ic"><InstaIcon /></span>
-                  <div><div className="faq-contact-t">Instagram</div><div className="faq-contact-s">@historiascantadasbr</div></div>
-                </a>
-                <button className="btn-primary" onClick={scrollToForm}>Criar minha música →</button>
-              </div>
-              <div className="faq-list">
-                {/* Accordion do DS (src/components/ui/Accordion) — substitui o
-                    custom +/− carret. Open/close interno, animacao + tokens
-                    da marca consistentes com o resto do app. */}
-                <Accordion items={faqs} />
-              </div>
-            </div>
-          </section>
+          <FaqSection
+            biaPhone={BIA_PHONE}
+            instagramUrl={INSTAGRAM}
+            onScrollToForm={scrollToForm}
+          />
 
           {/* ═══ EXPLORE MAIS ═══ */}
           <section className="explore">
@@ -4319,46 +4139,11 @@ export default function App() {
         </div>
       </footer>
 
-      {/* STICKY CTA — Falar com a Bia direto no WhatsApp (só aparece após scrollar).
-          Manda dados se já tiver pedido salvo no localStorage (ex.: visitas anteriores). */}
-      {view === 'landing' && (() => {
-        const supportNum = '5511920188319'
-        const saved = (() => {
-          try { return JSON.parse(localStorage.getItem('hc_current_order') || 'null') } catch (_) { return null }
-        })()
-        const clientName = (saved?.customerName || '').trim()
-        const honoree = (saved?.honoreeName || '').trim()
-        const orderId = saved?.id ? `\nPedido: #${String(saved.id).slice(0,8).toUpperCase()}` : ''
-        const greet = clientName ? `Olá Bia! Aqui é ${clientName}` : 'Olá Bia!'
-        const honPart = honoree ? ` — sobre a música para *${honoree}*` : ' — quero entender melhor sobre a música personalizada antes de comprar 🎵'
-        const msg = `${greet}${honPart}${orderId}`
-        const waHref = `https://wa.me/${supportNum}?text=${encodeURIComponent(msg)}`
-        return (
-          <a className={`bia-fab${ctaVisible ? ' visible' : ''}`} href={waHref} target="_blank" rel="noopener noreferrer" aria-label="Falar com a Bia no WhatsApp">
-            <span className="bia-fab-avatar">
-              <img src="/assets/Bia.jpeg" alt="Bia" onError={e => e.currentTarget.classList.add('hide')} />
-              <span className="bia-fab-dot" />
-            </span>
-            <span className="bia-fab-info">
-              <span className="bia-fab-name">Bia</span>
-              <span className="bia-fab-status">online · responde na hora</span>
-            </span>
-          </a>
-        )
-      })()}
+      {/* STICKY CTA — Falar com a Bia direto no WhatsApp (só aparece após scrollar). */}
+      {view === 'landing' && <BiaFab visible={ctaVisible} />}
 
       {/* TOAST */}
-      {view === 'landing' && (
-        <div className="toast-wrap">
-          <div className={`toast${toastVisible ? ' visible' : ''}`}>
-            <div className="toast-avatar">{toastData.photo ? <img src={toastData.photo} alt="" loading="lazy" /> : toastData.initials}</div>
-            <div>
-              <div className="toast-title">{toastData.name}</div>
-              <div className="toast-subtitle">Criou uma música há {toastData.time} atrás</div>
-            </div>
-          </div>
-        </div>
-      )}
+      {view === 'landing' && <PromoToast visible={toastVisible} data={toastData} />}
     </>
   )
 }
