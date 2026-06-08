@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom'
 import Quiz from './Quiz'
 // Utils puros extraidos pra core/utils (refactor Fase 1)
 import { priceToNum, fmtBRL, sleep } from './core/utils'
+// Infra (analytics, api wrappers) — refactor Fase 2
+import { track, trackPurchase, getMetaPixelData } from './core/infra'
 // Lembrança Cantada · Design System (src/components/ui)
 // Importamos os componentes TSX direto dos arquivos pra evitar resolver
 // pelo `index.js` legado que mistura JSX em arquivo .js (Vite/oxc nao
@@ -20,54 +22,13 @@ const API_URL = 'https://suno-api-novo.bvph.uk'
 // (acessível por "prefiro conversar" dentro do próprio quiz).
 const USE_QUIZ = true
 
-// Rastreamento Meta Pixel + Google Analytics (GA4) de uma vez. custom=true => trackCustom no Meta.
-// options.eventID — quando passado, Meta Pixel + CAPI deduplicam usando esse ID.
-function track(event, params, custom, options) {
-  try {
-    if (typeof window !== 'undefined' && window.fbq) {
-      if (options && options.eventID) {
-        window.fbq(custom ? 'trackCustom' : 'track', event, params || {}, { eventID: options.eventID })
-      } else {
-        window.fbq(custom ? 'trackCustom' : 'track', event, params || {})
-      }
-    }
-  } catch (_) {}
-  try { if (typeof window !== 'undefined' && window.gtag) window.gtag('event', event, params || {}) } catch (_) {}
-}
-// priceToNum agora vem de ./core/utils (refactor Fase 1)
+// track, trackPurchase, getMetaPixelData agora vêm de ./core/infra (Fase 2)
 const PLAN_VALUES = { musica: 19.90, completa: 29.90 }
-// orderId opcional: quando passado, o evento Purchase carrega event_id = purchase_{orderId}
-// pra deduplicar com a chamada server-side (CAPI no backend).
-function trackPurchase(orderId) {
-  let v = 0
-  try { v = Number(localStorage.getItem('hc_pay_value')) || 0 } catch (_) {}
-  const params = { value: v, currency: 'BRL' }
-  const options = orderId ? { eventID: `purchase_${orderId}` } : undefined
-  track('Purchase', params, false, options)
-}
 
-// SEGURANÇA: o frontend NÃO fala mais direto com o banco (sem service_role exposta).
+// SEGURANÇA: o frontend NÃO fala direto com o banco (sem service_role exposta).
 // Tudo passa pelo backend, que guarda as chaves no servidor e valida as entradas.
 // Retry com backoff exponencial (3 tentativas) — protege a criação do pedido
 // contra hiccup de rede ou 5xx temporário, evitando perder a história escrita.
-// Lê o cookie pelo nome — retorna '' se não existir.
-function _readCookie(name) {
-  try {
-    const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)'))
-    return m ? decodeURIComponent(m[1]) : ''
-  } catch (_) { return '' }
-}
-// Junta os dados que o backend usa pra Meta CAPI: pixel ativo + cookies _fbp/_fbc.
-// O servidor adiciona IP + User-Agent.
-function getMetaPixelData() {
-  let fbp_pixel_id = ''
-  try { fbp_pixel_id = String(window.__HC_FBP_ID__ || '') } catch (_) {}
-  return {
-    fbp_pixel_id,
-    fbp: _readCookie('_fbp'),
-    fbc: _readCookie('_fbc'),
-  }
-}
 async function apiCreateOrder(body) {
   let lastErr = null
   const enriched = { ...body, ...getMetaPixelData() }

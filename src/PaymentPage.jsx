@@ -10,8 +10,7 @@
 //   - Mostra previa + escolha plano + gera PIX
 //   - Polling /api/pay/status a cada 4s detecta pagamento → /p/:id
 import React, { useEffect, useState, useRef, useCallback } from 'react'
-
-const API_URL = 'https://suno-api-novo.bvph.uk'
+import { API_URL } from './core/infra'
 
 function getOrderId() {
   const m = window.location.pathname.match(/^\/finalizar\/([a-f0-9-]{8,})/i)

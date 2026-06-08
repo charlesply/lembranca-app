@@ -4,8 +4,7 @@
 // no WhatsApp). Fallback: baixa o arquivo e instrui a anexar manualmente.
 import React, { useEffect, useState } from 'react'
 import { safeFilename } from './core/utils'
-
-const API_URL = 'https://suno-api-novo.bvph.uk'
+import { API_URL } from './core/infra'
 
 function getOrderId() {
   const m = window.location.pathname.match(/^\/p\/([a-f0-9-]{8,})/i)
