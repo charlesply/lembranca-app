@@ -5,3 +5,4 @@ export { default as Typewriter, HERO_TYPED_PHRASES } from './components/Typewrit
 export { default as PreviewCarousel } from './components/PreviewCarousel'
 export { default as FaqSection } from './components/FaqSection'
 export { default as HowItWorksSection } from './components/HowItWorksSection'
+export { default as PlansSection } from './components/PlansSection'
