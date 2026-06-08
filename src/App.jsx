@@ -4,7 +4,12 @@ import { Quiz } from './features/Quiz'
 // PixPaymentModal + PLAN_DETAILS extraídos pra features/Payment na Fase A pós-merge
 import { PixPaymentModal, PLAN_DETAILS } from './features/Payment'
 // Landing — Countdown da oferta + Typewriter do hero (Fase B)
-import { Countdown, Typewriter, HERO_TYPED_PHRASES, PreviewCarousel, FaqSection, HowItWorksSection, PlansSection, TestimonialsSection } from './features/Landing'
+import {
+  Countdown, Typewriter, HERO_TYPED_PHRASES,
+  PreviewCarousel, FaqSection, HowItWorksSection,
+  PlansSection, TestimonialsSection,
+  LandingTopbar, BiaFab, PromoToast,
+} from './features/Landing'
 // Ícones compartilhados (Lucide stroke=currentColor) — extraídos na Fase B.2
 import {
   WhatsAppIcon, InstaIcon,
@@ -3268,14 +3273,7 @@ export default function App() {
     <>
       {/* ANNOUNCEMENT BAR */}
       {view === 'landing' && (
-        <div className="topbar topbar-offer">
-          <span className="topbar-proof"><IconGift s={14} /> +5.000 músicas já emocionaram</span>
-          <span className="topbar-mid">
-            <IconZap s={14} /> <span className="topbar-label">Oferta de lançamento:</span> <strong>R$&nbsp;19,90</strong>
-            <Countdown end={offerEnd} compact />
-          </span>
-          <button className="topbar-cta" onClick={scrollToForm}>Criar <span className="topbar-label">minha </span>música <IconArrowRight s={14} /></button>
-        </div>
+        <LandingTopbar offerEnd={offerEnd} onScrollToForm={scrollToForm} />
       )}
 
       {/* Banner cliente recorrente — só aparece se a gente já tem o cliente
@@ -4141,46 +4139,11 @@ export default function App() {
         </div>
       </footer>
 
-      {/* STICKY CTA — Falar com a Bia direto no WhatsApp (só aparece após scrollar).
-          Manda dados se já tiver pedido salvo no localStorage (ex.: visitas anteriores). */}
-      {view === 'landing' && (() => {
-        const supportNum = '5511920188319'
-        const saved = (() => {
-          try { return JSON.parse(localStorage.getItem('hc_current_order') || 'null') } catch (_) { return null }
-        })()
-        const clientName = (saved?.customerName || '').trim()
-        const honoree = (saved?.honoreeName || '').trim()
-        const orderId = saved?.id ? `\nPedido: #${String(saved.id).slice(0,8).toUpperCase()}` : ''
-        const greet = clientName ? `Olá Bia! Aqui é ${clientName}` : 'Olá Bia!'
-        const honPart = honoree ? ` — sobre a música para *${honoree}*` : ' — quero entender melhor sobre a música personalizada antes de comprar 🎵'
-        const msg = `${greet}${honPart}${orderId}`
-        const waHref = `https://wa.me/${supportNum}?text=${encodeURIComponent(msg)}`
-        return (
-          <a className={`bia-fab${ctaVisible ? ' visible' : ''}`} href={waHref} target="_blank" rel="noopener noreferrer" aria-label="Falar com a Bia no WhatsApp">
-            <span className="bia-fab-avatar">
-              <img src="/assets/Bia.jpeg" alt="Bia" onError={e => e.currentTarget.classList.add('hide')} />
-              <span className="bia-fab-dot" />
-            </span>
-            <span className="bia-fab-info">
-              <span className="bia-fab-name">Bia</span>
-              <span className="bia-fab-status">online · responde na hora</span>
-            </span>
-          </a>
-        )
-      })()}
+      {/* STICKY CTA — Falar com a Bia direto no WhatsApp (só aparece após scrollar). */}
+      {view === 'landing' && <BiaFab visible={ctaVisible} />}
 
       {/* TOAST */}
-      {view === 'landing' && (
-        <div className="toast-wrap">
-          <div className={`toast${toastVisible ? ' visible' : ''}`}>
-            <div className="toast-avatar">{toastData.photo ? <img src={toastData.photo} alt="" loading="lazy" /> : toastData.initials}</div>
-            <div>
-              <div className="toast-title">{toastData.name}</div>
-              <div className="toast-subtitle">Criou uma música há {toastData.time} atrás</div>
-            </div>
-          </div>
-        </div>
-      )}
+      {view === 'landing' && <PromoToast visible={toastVisible} data={toastData} />}
     </>
   )
 }
