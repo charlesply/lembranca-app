@@ -3,19 +3,13 @@
 // + botao "Compartilhar" via Web Share API com arquivos (anexa midia nativa
 // no WhatsApp). Fallback: baixa o arquivo e instrui a anexar manualmente.
 import React, { useEffect, useState } from 'react'
+import { safeFilename } from './core/utils'
 
 const API_URL = 'https://suno-api-novo.bvph.uk'
 
 function getOrderId() {
   const m = window.location.pathname.match(/^\/p\/([a-f0-9-]{8,})/i)
   return m ? m[1] : null
-}
-
-function safeFilename(name, ext, suffix) {
-  const clean = String(name || 'musica')
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-zA-Z0-9 _-]/g, '').trim().replace(/\s+/g, '_').slice(0, 40)
-  return `Para_${clean || 'voce'}${suffix ? '_' + suffix : ''}.${ext}`
 }
 
 // Detecta suporte a compartilhar arquivos via Web Share API.

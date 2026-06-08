@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import Quiz from './Quiz'
+// Utils puros extraidos pra core/utils (refactor Fase 1)
+import { priceToNum, fmtBRL, sleep } from './core/utils'
 // Lembrança Cantada · Design System (src/components/ui)
 // Importamos os componentes TSX direto dos arquivos pra evitar resolver
 // pelo `index.js` legado que mistura JSX em arquivo .js (Vite/oxc nao
@@ -32,7 +34,7 @@ function track(event, params, custom, options) {
   } catch (_) {}
   try { if (typeof window !== 'undefined' && window.gtag) window.gtag('event', event, params || {}) } catch (_) {}
 }
-const priceToNum = (p) => Number(String(p || '').replace(/[^\d,]/g, '').replace(',', '.')) || 0
+// priceToNum agora vem de ./core/utils (refactor Fase 1)
 const PLAN_VALUES = { musica: 19.90, completa: 29.90 }
 // orderId opcional: quando passado, o evento Purchase carrega event_id = purchase_{orderId}
 // pra deduplicar com a chamada server-side (CAPI no backend).
@@ -785,7 +787,7 @@ const PLAN_DETAILS = {
   musica:   { name: 'Música personalizada',         amount: 19.90 },
   completa: { name: 'Música personalizada + vídeo', amount: 29.90 },
 }
-const fmtBRL = (n) => 'R$ ' + Number(n).toFixed(2).replace('.', ',')
+// fmtBRL agora vem de ./core/utils (refactor Fase 1)
 
 /* CRC16-CCITT-FALSE · necessário no fim do BR Code (campo 63 da spec EMV) */
 function pixCrc16(str) {
@@ -3078,7 +3080,8 @@ export default function App() {
       })
     } catch (_) {}
   }
-  const _sleep = (ms) => new Promise(r => setTimeout(r, ms))
+  // _sleep agora e `sleep` em ./core/utils — alias local pra nao quebrar uso existente
+  const _sleep = sleep
   const nowHM = () => { const d = new Date(); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') }
   const lastSeenRef = useRef(null)
   if (!lastSeenRef.current) { const d = new Date(Date.now() - 240000); lastSeenRef.current = 'visto por último hoje às ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') }
