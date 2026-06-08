@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom'
 import { Quiz } from './features/Quiz'
 // PixPaymentModal + PLAN_DETAILS extraídos pra features/Payment na Fase A pós-merge
 import { PixPaymentModal, PLAN_DETAILS } from './features/Payment'
+// Landing — Countdown da oferta + Typewriter do hero (Fase B)
+import { Countdown, Typewriter, HERO_TYPED_PHRASES } from './features/Landing'
 // Utils puros extraidos pra core/utils (refactor Fase 1)
 import { priceToNum, fmtBRL, sleep } from './core/utils'
 // Infra (analytics, api wrappers) — refactor Fase 2
@@ -289,30 +291,7 @@ function getOfferEnd() {
   // sempre começa em 5:00 e vai diminuindo (a cada carregamento da página)
   return Date.now() + 5 * 60 * 1000
 }
-function Countdown({ end, compact }) {
-  const [left, setLeft] = useState(Math.max(0, end - Date.now()))
-  useEffect(() => {
-    const id = setInterval(() => setLeft(Math.max(0, end - Date.now())), 1000)
-    return () => clearInterval(id)
-  }, [end])
-  if (left <= 0) return null
-  const pad = n => String(n).padStart(2, '0')
-  const m = Math.floor(left / 60000), s = Math.floor(left / 1000) % 60
-  const Box = ({ v, l }) => <div className="cd-box"><span className="cd-num">{pad(v)}</span><span className="cd-lbl">{l}</span></div>
-  if (compact) return (
-    <span className="countdown countdown-compact" role="timer" aria-label="Tempo restante da oferta">
-      <Box v={m} l="min" /><span className="cd-sep">:</span><Box v={s} l="seg" />
-    </span>
-  )
-  return (
-    <div className="offer-urgency">
-      <div className="offer-urgency-top"><IconZap s={15} /> Oferta de lançamento — termina em</div>
-      <div className="countdown" role="timer" aria-label="Tempo restante da oferta">
-        <Box v={m} l="min" /><span className="cd-sep">:</span><Box v={s} l="seg" />
-      </div>
-    </div>
-  )
-}
+// Countdown extraído pra features/Landing/components/Countdown.jsx na Fase B.
 
 /* ── Step Indicator ── */
 const StepIndicator = ({ current, total }) => (
@@ -334,57 +313,7 @@ const StepIndicator = ({ current, total }) => (
    Lista de variações de "Uma música para …" que vão dando hint do
    uso casual do produto. Emoji no fim leva o tom; varia tanto que
    o usuário sente "isso serve pra qualquer ocasião". */
-const HERO_TYPED_PHRASES = [
-  { text: 'para comemorar um aniversário' },
-  { text: 'para seu filho campeão' },
-  { text: 'para sua mãe querida' },
-  { text: 'para homenagear alguém especial' },
-  { text: 'para seu melhor amigo' },
-  { text: 'para alguém inesquecível' },
-]
-
-function Typewriter({ phrases, prefix = 'Uma música ' }) {
-  const [phIdx, setPhIdx] = useState(0)
-  const [shown, setShown] = useState('')
-  const [phase, setPhase] = useState('typing')  // 'typing' | 'pause' | 'deleting'
-
-  useEffect(() => {
-    const cur = phrases[phIdx % phrases.length].text
-    let timeoutMs = 60      // velocidade de digitação por char
-    if (phase === 'typing') {
-      if (shown.length < cur.length) {
-        const t = setTimeout(() => setShown(cur.slice(0, shown.length + 1)), timeoutMs)
-        return () => clearTimeout(t)
-      } else {
-        const t = setTimeout(() => setPhase('deleting'), 1800)   // pausa lendo a frase
-        return () => clearTimeout(t)
-      }
-    }
-    if (phase === 'deleting') {
-      if (shown.length > 0) {
-        const t = setTimeout(() => setShown(cur.slice(0, shown.length - 1)), 30)
-        return () => clearTimeout(t)
-      } else {
-        // próxima frase
-        setPhase('typing')
-        setPhIdx(i => (i + 1) % phrases.length)
-      }
-    }
-  }, [shown, phase, phIdx, phrases])
-
-  const cur = phrases[phIdx % phrases.length]
-  // mostra o emoji só quando a frase está completamente digitada (efeito "chegou")
-  const showEmoji = phase !== 'deleting' && shown.length === cur.text.length
-
-  return (
-    <p className="hero-typewriter" aria-live="polite" aria-atomic="true">
-      <span className="hero-typewriter-prefix">{prefix}</span>
-      <span className="hero-typewriter-text">{shown}</span>
-      <span className="hero-typewriter-cursor" aria-hidden="true">|</span>
-      <span className={`hero-typewriter-emoji${showEmoji ? ' is-shown' : ''}`} aria-hidden="true">{cur.emoji}</span>
-    </p>
-  )
-}
+// HERO_TYPED_PHRASES + Typewriter extraídos pra features/Landing/components/Typewriter.jsx na Fase B.
 
 /* ══════════════════════════════════════════════════════════════
    PROGRESS VIEW · tela vendedora enquanto a música é gerada
