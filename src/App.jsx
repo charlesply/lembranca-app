@@ -4,7 +4,7 @@ import { Quiz } from './features/Quiz'
 // PixPaymentModal + PLAN_DETAILS extraídos pra features/Payment na Fase A pós-merge
 import { PixPaymentModal, PLAN_DETAILS } from './features/Payment'
 // Landing — Countdown da oferta + Typewriter do hero (Fase B)
-import { Countdown, Typewriter, HERO_TYPED_PHRASES, PreviewCarousel, FaqSection } from './features/Landing'
+import { Countdown, Typewriter, HERO_TYPED_PHRASES, PreviewCarousel, FaqSection, HowItWorksSection } from './features/Landing'
 // Ícones compartilhados (Lucide stroke=currentColor) — extraídos na Fase B.2
 import {
   WhatsAppIcon, InstaIcon,
@@ -3083,13 +3083,7 @@ export default function App() {
   ]
   const features = ['Música completa, sua e exclusiva', '2 versões da mesma letra pra você escolher', 'Vídeo de brinde pra postar nas redes 🎁', 'Entrega rápida e segura no WhatsApp', 'Arquivo em MP3 pra guardar pra sempre']
 
-  /* ── Como funciona (4 passos) ── */
-  const howSteps = [
-    { n: 1, title: 'Conte a sua história', text: 'Você nos diz pra quem é, a relação e os momentos especiais. Pode ser por texto ou por áudio — do seu jeito.' },
-    { n: 2, title: 'Personalize cada detalhe', text: 'Escolha o estilo musical, o clima e a voz (masculina ou feminina). A música fica com a sua cara.' },
-    { n: 3, title: 'Receba a prévia na hora', text: 'Em poucos minutos você ouve um trecho da música pronta, sem compromisso e sem pagar nada antes.' },
-    { n: 4, title: 'Emocione quem você ama', text: 'Liberou a versão completa, é seu pra guardar e mandar — fica pra sempre 💜' },
-  ]
+  // howSteps movido pra features/Landing/components/HowItWorksSection.jsx na Fase B.3.3
 
   /* ── Recursos (bento grid) ── */
   const featureBento = [
@@ -3638,25 +3632,7 @@ export default function App() {
           </section>
 
           {/* ═══ COMO FUNCIONA — 4 passos ═══ */}
-          <section className="howitworks" id="como-funciona">
-            <div className="container">
-              <div className="section-header">
-                <Pill tone="accent">COMO FUNCIONA</Pill>
-                <h2 className="section-title">Crie uma música inesquecível em <span className="accent-text">4 passos simples</span></h2>
-                <p className="section-subtitle">Do jeito mais fácil possível: você conta, a gente compõe e emociona quem você ama.</p>
-              </div>
-              <div className="how-grid">
-                {howSteps.map(s => (
-                  <div key={s.n} className="how-card">
-                    <div className="how-num">{s.n}</div>
-                    <div className="how-img"><img src={`/assets/passos/passo-${s.n}.jpg`} alt={s.title} loading="lazy" /></div>
-                    <div className="how-title">{s.title}</div>
-                    <div className="how-text">{s.text}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
+          <HowItWorksSection />
 
           {/* ═══ PRÉVIA / OUÇA ANTES (carrossel) ═══ */}
           <PreviewCarousel
