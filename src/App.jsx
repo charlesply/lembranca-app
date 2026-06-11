@@ -21,7 +21,11 @@ import {
 // Utils puros extraidos pra core/utils (refactor Fase 1)
 import { priceToNum, fmtBRL, sleep } from './core/utils'
 // Infra (analytics, api wrappers) — refactor Fase 2
-import { track, trackPurchase, getMetaPixelData } from './core/infra'
+import { track, trackPurchase, getMetaPixelData, captureTrackingFromURL, getTracking } from './core/infra'
+
+// Captura tracking (UTM + src) na primeira carga do app — antes do React montar.
+// Idempotente: só sobrescreve se vier valor novo na URL.
+try { captureTrackingFromURL() } catch (_) {}
 // Lembrança Cantada · Design System (src/components/ui)
 // Importamos os componentes TSX direto dos arquivos pra evitar resolver
 // pelo `index.js` legado que mistura JSX em arquivo .js (Vite/oxc nao
@@ -48,7 +52,7 @@ const PLAN_VALUES = { musica: 19.90, completa: 29.90 }
 // contra hiccup de rede ou 5xx temporário, evitando perder a história escrita.
 async function apiCreateOrder(body) {
   let lastErr = null
-  const enriched = { ...body, ...getMetaPixelData() }
+  const enriched = { ...body, ...getMetaPixelData(), ...getTracking() }
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const r = await fetch(`${API_URL}/api/order`, {
