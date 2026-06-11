@@ -44,3 +44,51 @@ export function getMetaPixelData() {
     fbc: readCookie('_fbc'),
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// UTM + src tracking — captura URLSearchParams na primeira carga e persiste
+// em localStorage pra sobreviver ao funil (cliente pode abrir prévia em outra
+// aba, voltar pelo email, etc). Captura: utm_source, utm_campaign, utm_medium,
+// utm_term, utm_content, src.
+// Idempotente: só sobrescreve se vier valor novo na URL (mais recente vence).
+// ═══════════════════════════════════════════════════════════════════════════
+
+const TRACKING_KEYS = ['utm_source', 'utm_campaign', 'utm_medium', 'utm_term', 'utm_content', 'src']
+const TRACKING_STORAGE_KEY = 'hc_tracking'
+
+// Captura params da URL atual e salva no localStorage. Chama 1x ao abrir o site.
+// Se a URL não tem nenhum param de tracking, NÃO toca no que já está salvo
+// (preserva o tracking original do cliente).
+export function captureTrackingFromURL() {
+  try {
+    const url = new URL(window.location.href)
+    const fromURL = {}
+    let foundAny = false
+    for (const k of TRACKING_KEYS) {
+      const v = url.searchParams.get(k)
+      if (v) {
+        fromURL[k] = String(v).slice(0, 200)
+        foundAny = true
+      }
+    }
+    if (!foundAny) return // não mexe no localStorage
+    // Merge: mantém o que já tinha + sobrescreve com o que veio na URL
+    const existing = getTracking()
+    const merged = { ...existing, ...fromURL, captured_at: new Date().toISOString() }
+    localStorage.setItem(TRACKING_STORAGE_KEY, JSON.stringify(merged))
+  } catch (_) {}
+}
+
+// Retorna o tracking salvo (objeto) ou {} se nada.
+export function getTracking() {
+  try {
+    const raw = localStorage.getItem(TRACKING_STORAGE_KEY)
+    if (!raw) return {}
+    const obj = JSON.parse(raw)
+    if (!obj || typeof obj !== 'object') return {}
+    // Só retorna os campos válidos
+    const out = {}
+    for (const k of TRACKING_KEYS) if (obj[k]) out[k] = obj[k]
+    return out
+  } catch (_) { return {} }
+}
