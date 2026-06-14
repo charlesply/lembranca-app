@@ -1258,12 +1258,6 @@ function PreviewResultView({ resultData, onBuy, onWhatsApp, onNew, payLoading })
                   Baixar vídeo
                 </a>
               )}
-              {!resultData?.video_url && (resultData?.plan || '').toLowerCase() === 'completa' && (
-                <div className="unlocked-btn unlocked-btn-producing" aria-live="polite">
-                  <span className="unlocked-producing-spinner" aria-hidden="true" />
-                  Vídeo sendo produzido…
-                </div>
-              )}
             </div>
             <div className="unlocked-shares">
               <ShareButton
@@ -1282,12 +1276,6 @@ function PreviewResultView({ resultData, onBuy, onWhatsApp, onNew, payLoading })
                   label="Enviar vídeo no WhatsApp"
                   variant="secondary"
                 />
-              )}
-              {!resultData?.video_url && (resultData?.plan || '').toLowerCase() === 'completa' && (
-                <div className="share-btn share-btn-secondary share-btn-producing" aria-live="polite">
-                  <span className="unlocked-producing-spinner" aria-hidden="true" />
-                  Vídeo sendo produzido — fica pronto em até 10 min
-                </div>
               )}
             </div>
           </article>
@@ -1686,31 +1674,6 @@ export default function App() {
     previewLimitSec: 50,
     unlocked: _devResultUnlocked,
   } : null)
-
-  // Polling do video quando plan='completa' pago mas sem video_brinde_url.
-  // Roda a cada 15s ate aparecer URL OU 15 min. Para sozinho quando recebe URL.
-  React.useEffect(() => {
-    if (!resultData?.unlocked) return
-    if ((resultData?.plan || '').toLowerCase() !== 'completa') return
-    if (resultData?.video_url) return
-    if (!resultData?.orderId) return
-    let ticks = 0
-    const MAX_TICKS = 60 // 60 x 15s = 15 min
-    const t = setInterval(async () => {
-      ticks++
-      try {
-        const o = await apiOrderStatus(resultData.orderId)
-        if (o && o.video_brinde_url) {
-          setResultData(prev => prev ? { ...prev, video_url: o.video_brinde_url } : prev)
-          clearInterval(t)
-          return
-        }
-      } catch (_) {}
-      if (ticks >= MAX_TICKS) clearInterval(t)
-    }, 15000)
-    return () => clearInterval(t)
-  }, [resultData?.orderId, resultData?.unlocked, resultData?.plan, resultData?.video_url])
-
   const [errorMsg, setErrorMsg] = useState('')
   // ── Meta-safe contact gate (cliente precisa contactar Bia primeiro) ──
   const [showWhatsAppBanner, setShowWhatsAppBanner] = useState(false)
@@ -1803,7 +1766,6 @@ export default function App() {
           original_url: row.original_audio_url || fau[0] || null,
           bonus_url: fau.find(u => u && u !== (row.original_audio_url || fau[0])) || null,
           video_url: row.video_upsell_url || row.video_brinde_url || null,
-          plan: row.plan || null,
           orderId: co.id,
           unlocked: !!row.paid_at,
           previewLimitSec: 50,
@@ -1872,7 +1834,6 @@ export default function App() {
           preview_url: row.preview_audio_url || null,
           original_url: row.original_audio_url || fau[0] || null,
           video_url: row.video_brinde_url || null,
-          plan: row.plan || null,
           unlocked: false,
           fullDurationSec: 189,
           previewLimitSec: 50,
