@@ -186,10 +186,7 @@ export default function DeliveryPage() {
           <section className="dp-section">
             <h2>🎬 Vídeo com a letra</h2>
             <div className="dp-video-producing">
-              <div className="dp-video-producing-icon">
-                <span className="dp-video-producing-spinner" aria-hidden="true" />
-                <span className="dp-video-producing-emoji">🎬</span>
-              </div>
+              <div className="dp-video-producing-icon">🎬</div>
               <div className="dp-video-producing-text">
                 <strong>Seu vídeo está sendo produzido</strong>
                 <span>Ficará pronto em até 10 minutos. Te avisamos aqui assim que terminar 💛</span>
@@ -296,21 +293,13 @@ function Shell({ children }) {
           width: 54px; height: 54px; border-radius: 50%;
           background: linear-gradient(135deg, #fdf0e8, #fae0d0);
           display: flex; align-items: center; justify-content: center;
-          flex-shrink: 0; position: relative;
+          font-size: 24px; flex-shrink: 0; position: relative;
         }
-        .dp-video-producing-emoji {
-          font-size: 24px; line-height: 1; display: inline-block;
-        }
-        .dp-video-producing-spinner {
-          position: absolute; inset: -6px; border-radius: 50%;
-          border: 3px solid rgba(204, 120, 92, 0.20);
-          border-top-color: #CC785C;
-          animation: dp-spin 1s linear infinite;
-          -webkit-animation: dp-spin 1s linear infinite;
-          pointer-events: none;
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .dp-video-producing-spinner { animation: none; -webkit-animation: none; }
+        .dp-video-producing-icon::after {
+          content: ''; position: absolute; inset: -4px; border-radius: 50%;
+          border: 2px solid #CC785C; border-top-color: transparent;
+          animation: dp-spin 1.4s linear infinite;
+          -webkit-animation: dp-spin 1.4s linear infinite;
         }
         .dp-video-producing-text { flex: 1; min-width: 0; }
         .dp-video-producing-text strong {
@@ -324,3 +313,4 @@ function Shell({ children }) {
     </div>
   )
 }
+
