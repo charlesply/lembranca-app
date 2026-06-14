@@ -3897,6 +3897,45 @@ em, .accent-em { color: var(--c-accent-deep); font-style: italic; font-weight: 5
 @media (min-width: 480px) {
   .unlocked-btn { font-size: 14px; padding: 13px 14px; }
 }
+.unlocked-btn.unlocked-btn-producing {
+  background: linear-gradient(135deg, #d88670 0%, #CC785C 100%);
+  box-shadow: 0 6px 18px rgba(204, 120, 92, 0.35);
+  cursor: default; user-select: none;
+}
+.unlocked-btn.unlocked-btn-producing:hover {
+  transform: none;
+  box-shadow: 0 6px 18px rgba(204, 120, 92, 0.35);
+}
+.share-btn.share-btn-producing {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 8px; width: 100%; margin-top: 8px; padding: 12px 16px;
+  background: rgba(204, 120, 92, 0.08);
+  border: 1px dashed rgba(204, 120, 92, 0.50);
+  color: #CC785C;
+  border-radius: var(--c-radius-pill, 999px);
+  font-family: var(--c-font);
+  font-size: 13.5px; font-weight: 600;
+  cursor: default; user-select: none;
+}
+.unlocked-producing-spinner {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: unlocked-spin 0.9s linear infinite;
+  -webkit-animation: unlocked-spin 0.9s linear infinite;
+  flex-shrink: 0;
+}
+.share-btn-producing .unlocked-producing-spinner {
+  border: 2px solid rgba(204, 120, 92, 0.25);
+  border-top-color: #CC785C;
+}
+@keyframes unlocked-spin { to { transform: rotate(360deg); } }
+@-webkit-keyframes unlocked-spin { to { -webkit-transform: rotate(360deg); transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .unlocked-producing-spinner { animation: none; -webkit-animation: none; }
+}
 
 /* Botão Compartilhar · ocupa linha inteira abaixo dos downloads.
    Estilo "outlined" verde sutil pra não competir com os 2 botões cheios. */
