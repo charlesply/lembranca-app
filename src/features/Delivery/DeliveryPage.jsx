@@ -53,6 +53,30 @@ export default function DeliveryPage() {
       })
   }, [id])
 
+  // Polling automatico do video pro plano COMPLETA enquanto nao chega.
+  // Roda a cada 15s ate aparecer video_brinde_url OU passar 15 min (60 ticks).
+  // Para imediatamente quando recebe a URL — sem reload, sem botao.
+  useEffect(() => {
+    if (!data || !id) return
+    const needsVideo = !!data.paid_at && data.plan === 'completa' && !data.video_brinde_url
+    if (!needsVideo) return
+    let ticks = 0
+    const MAX_TICKS = 60 // 60 x 15s = 15 min
+    const t = setInterval(async () => {
+      ticks++
+      try {
+        const o = await fetchOrderStatus(id)
+        if (o && o.video_brinde_url) {
+          setData(o)
+          clearInterval(t)
+          return
+        }
+      } catch (_) {}
+      if (ticks >= MAX_TICKS) clearInterval(t)
+    }, 15000)
+    return () => clearInterval(t)
+  }, [id, data?.paid_at, data?.plan, data?.video_brinde_url])
+
   const videoPoster = useVideoPoster(data?.video_brinde_url)
 
   async function handleShare(key, url, filename, mimeType, label) {
@@ -132,7 +156,7 @@ export default function DeliveryPage() {
           )
         })}
 
-        {video && (() => {
+        {video ? (() => {
           const filename = safeFilename(honoree, 'mp4')
           const label = `🎬 Vídeo da música para ${honoree}`
           const key = 'video'
@@ -158,7 +182,18 @@ export default function DeliveryPage() {
               {st.msg && <p className="dp-share-msg">{st.msg}</p>}
             </section>
           )
-        })()}
+        })() : (paid && data.plan === 'completa') && (
+          <section className="dp-section">
+            <h2>🎬 Vídeo com a letra</h2>
+            <div className="dp-video-producing">
+              <div className="dp-video-producing-icon">🎬</div>
+              <div className="dp-video-producing-text">
+                <strong>Seu vídeo está sendo produzido</strong>
+                <span>Ficará pronto em até 10 minutos. Te avisamos aqui assim que terminar 💛</span>
+              </div>
+            </div>
+          </section>
+        )}
 
         {!audios.length && !video && (
           <p className="dp-subtitle" style={{ marginTop: 24 }}>
@@ -247,6 +282,31 @@ function Shell({ children }) {
         }
         .dp-err { color: #b04a30; }
         .dp-footer { text-align: center; margin-top: 32px; padding-top: 20px; border-top: 1px solid #f3e5d8; color: #a09080; font-size: 13px; }
+        .dp-video-producing {
+          background: #fff;
+          border: 1px dashed #ecc8b6;
+          border-radius: 12px;
+          padding: 22px 18px;
+          display: flex; align-items: center; gap: 16px;
+        }
+        .dp-video-producing-icon {
+          width: 54px; height: 54px; border-radius: 50%;
+          background: linear-gradient(135deg, #fdf0e8, #fae0d0);
+          display: flex; align-items: center; justify-content: center;
+          font-size: 24px; flex-shrink: 0; position: relative;
+        }
+        .dp-video-producing-icon::after {
+          content: ''; position: absolute; inset: -4px; border-radius: 50%;
+          border: 2px solid #CC785C; border-top-color: transparent;
+          animation: dp-spin 1.4s linear infinite;
+        }
+        .dp-video-producing-text { flex: 1; min-width: 0; }
+        .dp-video-producing-text strong {
+          display: block; color: #2b1d14; font-size: 15px; font-weight: 700; margin-bottom: 4px;
+        }
+        .dp-video-producing-text span {
+          font-size: 13px; color: #7a6354; line-height: 1.5;
+        }
       `}</style>
       {children}
     </div>
