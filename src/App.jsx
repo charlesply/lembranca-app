@@ -1810,11 +1810,8 @@ export default function App() {
         })
         setCurrentOrderId(co.id)
         setView('result')
-        // FIX 14/jun/2026: NAO limpa hc_current_order apos pagar. Antes limpava
-        // e no reload o cliente caia no auto-resume-por-telefone, que pegava
-        // outra previa nao paga e mandava DE VOLTA pra tela de pagamento -
-        // gerando cobranca dupla. Agora mantemos o pedido pago em
-        // localStorage; ele so eh limpo quando cliente clica "Fazer outra".
+        // Se já pago, limpa o current_order — não precisa mais resumir
+        if (row.paid_at) clearCurrentOrder()
       } catch (_) {
         // Erro de rede — deixa quieto, cliente fica na landing
       }
