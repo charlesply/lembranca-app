@@ -1,6 +1,7 @@
 // Tracking unificado Meta Pixel (fbq) + Google Analytics 4 (gtag).
 // `custom=true` dispara trackCustom no Meta. `options.eventID` permite
 // deduplicacao server-side via CAPI usando o mesmo event_id.
+import { apiGet } from './api'
 
 export function track(event, params, custom, options) {
   try {
@@ -17,9 +18,27 @@ export function track(event, params, custom, options) {
 
 // Dispara Purchase. Se passar orderId, gera event_id `purchase_{orderId}`
 // pra dedup com o CAPI (mesmo event_id que o servidor manda).
-export function trackPurchase(orderId) {
+//
+// CORRIGIDO 15/jun/2026: o `value` agora vem do backend (order.payment_amount)
+// em vez de `localStorage.hc_pay_value`. Causa do antigo bug: ~85% dos clientes
+// pagavam por fluxos que NÃO setam o localStorage (link /finalizar/:id,
+// /promo/:id, reload pós-pagamento, modo anônimo) → Pixel mandava `value:0`
+// enquanto CAPI mandava o valor real → Meta detectava mismatch → ROAS bagunçado.
+// Fallback pra localStorage só pra continuar disparando mesmo se backend cair.
+export async function trackPurchase(orderId) {
   let v = 0
-  try { v = Number(localStorage.getItem('hc_pay_value')) || 0 } catch (_) {}
+  // Source-of-truth: o que o backend gravou em payment_amount no Supabase.
+  if (orderId) {
+    try {
+      const o = await apiGet(`/api/order/${orderId}/status`, { timeout: 5000 })
+      const fromServer = Number(o?.payment_amount)
+      if (Number.isFinite(fromServer) && fromServer > 0) v = fromServer
+    } catch (_) {}
+  }
+  // Fallback (rede falhou ou orderId ausente): usa o que tava no localStorage.
+  if (!v) {
+    try { v = Number(localStorage.getItem('hc_pay_value')) || 0 } catch (_) {}
+  }
   const params = { value: v, currency: 'BRL' }
   const options = orderId ? { eventID: `purchase_${orderId}` } : undefined
   track('Purchase', params, false, options)
