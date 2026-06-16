@@ -54,7 +54,10 @@ export default function PaymentPage() {
         return
       }
       setOrder(o)
-      if (o.plan && PLANS.some(p => p.key === o.plan)) setPlan(o.plan)
+      // SEMPRE default 'completa' (R$29,90 com vídeo) na PaymentPage — independente
+      // do que o cliente escolheu na criação do pedido. Decisão do dono em 16/jun:
+      // o plano "completa" é o que queremos pré-selecionado pra maximizar upsell.
+      // Cliente que quer só musica pode trocar manualmente no card.
     })
   }, [id, navigate])
 
