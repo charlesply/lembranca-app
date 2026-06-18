@@ -24,7 +24,7 @@ const DEFAULT_FAQS = [
 
 export default function FaqSection({
   faqs = DEFAULT_FAQS,
-  biaPhone = '5511920188319',
+  biaPhone = '5511920103970',
   instagramUrl = 'https://instagram.com/historiascantadasbr',
   onScrollToForm,
 }) {

@@ -702,7 +702,7 @@ function pixBRCode({ key, amount, name = PIX_MERCHANT_NAME, city = PIX_MERCHANT_
 // um ping pro backend, que (1) salva o pedido de ajuda no proof_ai_data e
 // (2) avisa o admin no Evolution imediatamente. Resultado: a Bia já vê o
 // chat aberto sabendo de quem é, qual pedido, qual o problema da rejeição.
-const BIA_PHONE_E164 = '5511920188319'
+const BIA_PHONE_E164 = '5511920103970'
 async function openHelpOnWhatsApp({ orderId, honoreeName, customerName, customerPhone, reasons = [], context = 'rejected' }) {
   const id8 = String(orderId || '').slice(0, 8).toUpperCase()
   // Mensagem repaginada (jun/2026): bem mais curta, escaneavel, focada em
@@ -1299,7 +1299,7 @@ function PreviewResultView({ resultData, onBuy, onWhatsApp, onNew, payLoading })
         {/* Botão WhatsApp flutuante — só aparece após pagamento.
             Suporte direto pra dúvidas com a Bia, manda nome do cliente, do homenageado, plano e link. */}
         {resultData?.unlocked && (() => {
-          const supportNum = '5511920188319'
+          const supportNum = '5511920103970'
           const honoree = resultData?.honoreeName || 'minha música'
           const clientName = (resultData?.customerName || resultData?.clientName || resultData?.customer_name || '').trim()
           const greet = clientName ? `Olá Bia! Aqui é ${clientName}` : 'Olá Bia!'
@@ -1945,9 +1945,9 @@ export default function App() {
     })
   }
   const closePixModal = () => setPixModal(null)
-  const BIA_PHONE = '5511920188319'
+  const BIA_PHONE = '5511920103970'
   const INSTAGRAM = 'https://instagram.com/historiascantadasbr'
-  const WHATSAPP = `https://wa.me/${'5511920188319'}`
+  const WHATSAPP = `https://wa.me/${'5511920103970'}`
   const lastScrollY = useRef(0)
   const headerRef = useRef(null)
   const ticking = useRef(false)
@@ -3163,9 +3163,9 @@ export default function App() {
     ]},
     { title: 'Empresa', links: [
       { label: 'Sobre nós', href: '#how' },
-      { label: 'Contato',   href: `https://wa.me/${'5511920188319'}`, external: true },
+      { label: 'Contato',   href: `https://wa.me/${'5511920103970'}`, external: true },
       { label: 'Instagram', href: 'https://instagram.com/historiascantadasbr', external: true },
-      { label: 'WhatsApp',  href: `https://wa.me/${'5511920188319'}`, external: true },
+      { label: 'WhatsApp',  href: `https://wa.me/${'5511920103970'}`, external: true },
     ]},
     { title: 'Legal', links: [
       { label: 'Termos de uso', href: '/termos.html', external: true },
