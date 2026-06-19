@@ -10,7 +10,7 @@
 //   - poster do video extraido pra hook useVideoPoster (limpa o componente)
 //   - fetch de order foi pra api/deliveryService
 import React, { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { safeFilename } from '../../core/utils'
 import { useVideoPoster } from './hooks/useVideoPoster'
 import { fetchOrderStatus } from './api/deliveryService'
@@ -39,6 +39,7 @@ function downloadFile(url, filename) {
 
 export default function DeliveryPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const [data, setData] = useState(null)
   const [err, setErr] = useState(null)
   const [shareState, setShareState] = useState({})
@@ -48,10 +49,17 @@ export default function DeliveryPage() {
     if (!id) { setErr('Link inválido. Verifique a URL.'); return }
     fetchOrderStatus(id)
       .then(o => {
-        if (o) setData(o)
-        else setErr('Não conseguimos carregar seu pedido. Tente atualizar a página.')
+        if (!o) { setErr('Não conseguimos carregar seu pedido. Tente atualizar a página.'); return }
+        // TRAVA anti-vazamento: /p/ é só ENTREGA (pago). Quem ainda NÃO pagou é
+        // mandado pra /finalizar (prévia + planos) — nunca vê/baixa a música
+        // completa antes de pagar. Espelha a PaymentPage (que faz pago → /p/).
+        if (!o.paid_at && o.status !== 'paid' && o.status !== 'delivered') {
+          navigate(`/finalizar/${id}`, { replace: true })
+          return
+        }
+        setData(o)
       })
-  }, [id])
+  }, [id, navigate])
 
   // Polling automatico do video pro plano COMPLETA enquanto nao chega.
   // Roda a cada 15s ate aparecer video_brinde_url OU passar 15 min (60 ticks).
