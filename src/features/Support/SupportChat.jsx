@@ -65,19 +65,36 @@ export default function SupportChat() {
 
   const orderId = readOrderId(loc.pathname)
   // Páginas de pedido (checkout /finalizar + entrega /p + oferta /promo) = suporte
-  // pra quem já pagou/gerou prévia → mostra de cara. Home/quiz = só aparece depois
-  // que a pessoa ROLA a página (procurando ajuda), pra não tirar ninguém do fluxo.
+  // pra quem já pagou → mostra de cara. Dentro do App (home/quiz/result) depende da
+  // TELA, publicada pelo App em window.__lcView / evento 'lc:view'.
   const isOrderPage = /^\/(p|finalizar|promo)\//i.test(loc.pathname)
+  const [appView, setAppView] = useState(() => { try { return window.__lcView || null } catch { return null } })
   const [revealed, setRevealed] = useState(isOrderPage)
 
   useEffect(() => {
+    const onView = (e) => setAppView(e?.detail || null)
+    window.addEventListener('lc:view', onView)
+    try { if (window.__lcView) setAppView(window.__lcView) } catch (_) {}
+    return () => window.removeEventListener('lc:view', onView)
+  }, [])
+
+  // 🚫 PROIBIDO no quiz e enquanto gera a prévia — NUNCA por cima do fluxo de criação.
+  const blocked = !isOrderPage && (appView === 'quiz' || appView === 'progress')
+
+  // Reaparece só após ROLAR (home, result-após-prévia, etc.). Páginas de pedido: de
+  // cara. Reseta a cada troca de tela → result também exige rolar (mesma lógica da home).
+  useEffect(() => {
     if (isOrderPage) { setRevealed(true); return }
     setRevealed(false)
+    if (blocked) return
     const onScroll = () => { if (window.scrollY > window.innerHeight * 0.6) setRevealed(true) }
     window.addEventListener('scroll', onScroll, { passive: true })
     onScroll()
     return () => window.removeEventListener('scroll', onScroll)
-  }, [isOrderPage, loc.pathname])
+  }, [isOrderPage, loc.pathname, appView, blocked])
+
+  // Se entrou no quiz/gerando com o chat aberto, fecha na hora.
+  useEffect(() => { if (blocked) setOpen(false) }, [blocked])
 
   const persist = useCallback((arr) => {
     try { sessionStorage.setItem('lc_chat_msgs', JSON.stringify(arr.slice(-80))) } catch (_) {}
@@ -144,8 +161,8 @@ export default function SupportChat() {
 
   return (
     <>
-      {/* Botão flutuante — na home só aparece após rolar (revealed); nas páginas de pedido, de cara */}
-      {!open && revealed && (
+      {/* Botão flutuante — proibido no quiz/gerando; senão: pedido=de cara, resto=após rolar */}
+      {!open && revealed && !blocked && (
         <button onClick={() => setOpen(true)} aria-label="Falar com a Bia"
           style={{
             position: 'fixed', right: 18, bottom: 18, zIndex: 2147483000,
@@ -168,7 +185,7 @@ export default function SupportChat() {
       )}
 
       {/* Painel do chat */}
-      {open && (
+      {open && !blocked && (
         <div style={{
           position: 'fixed', right: 16, bottom: 16, zIndex: 2147483000,
           width: 'min(380px, calc(100vw - 24px))', height: 'min(560px, calc(100vh - 32px))',
