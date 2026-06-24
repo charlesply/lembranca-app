@@ -64,6 +64,20 @@ export default function SupportChat() {
   const lastOutAt = useRef(null)
 
   const orderId = readOrderId(loc.pathname)
+  // Páginas de pedido (checkout /finalizar + entrega /p + oferta /promo) = suporte
+  // pra quem já pagou/gerou prévia → mostra de cara. Home/quiz = só aparece depois
+  // que a pessoa ROLA a página (procurando ajuda), pra não tirar ninguém do fluxo.
+  const isOrderPage = /^\/(p|finalizar|promo)\//i.test(loc.pathname)
+  const [revealed, setRevealed] = useState(isOrderPage)
+
+  useEffect(() => {
+    if (isOrderPage) { setRevealed(true); return }
+    setRevealed(false)
+    const onScroll = () => { if (window.scrollY > window.innerHeight * 0.6) setRevealed(true) }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [isOrderPage, loc.pathname])
 
   const persist = useCallback((arr) => {
     try { sessionStorage.setItem('lc_chat_msgs', JSON.stringify(arr.slice(-80))) } catch (_) {}
@@ -130,15 +144,17 @@ export default function SupportChat() {
 
   return (
     <>
-      {/* Botão flutuante */}
-      {!open && (
+      {/* Botão flutuante — na home só aparece após rolar (revealed); nas páginas de pedido, de cara */}
+      {!open && revealed && (
         <button onClick={() => setOpen(true)} aria-label="Falar com a Bia"
           style={{
             position: 'fixed', right: 18, bottom: 18, zIndex: 2147483000,
             display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px 8px 8px',
             background: '#fff', border: 'none', borderRadius: 999, cursor: 'pointer',
             boxShadow: '0 10px 30px -8px rgba(0,0,0,.35)', fontFamily: 'Inter, system-ui, sans-serif',
+            animation: 'lcfab-in .32s cubic-bezier(.2,.7,.3,1)',
           }}>
+          <style>{'@keyframes lcfab-in{from{opacity:0;transform:translateY(16px) scale(.92)}to{opacity:1;transform:none}}'}</style>
           <span style={{ position: 'relative', width: 42, height: 42, flex: '0 0 auto' }}>
             <img src="/assets/Bia.jpeg" alt="Bia" style={{ width: 42, height: 42, borderRadius: '50%', objectFit: 'cover' }}
               onError={e => { e.currentTarget.style.display = 'none' }} />
