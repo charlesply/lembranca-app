@@ -31,17 +31,20 @@ function readOrderId(pathname) {
 const MEDIA_RE = /(https?:\/\/[^\s]+?\.(?:mp3|mp4|m4a|wav|ogg))(?=$|\s)/i
 const URL_RE = /(https?:\/\/[^\s]+)/g
 
-function Body({ text }) {
+function Body({ text, mine }) {
   const str = String(text || '')
   const media = str.match(MEDIA_RE)
   const parts = str.split(URL_RE)
+  // No balão do cliente (terracota) o link é branco; no da Bia (fundo branco) usa a
+  // cor da marca — senão fica branco-no-branco e some.
+  const linkColor = mine ? '#fff' : '#AB4B2B'
   return (
     <>
       {media && (/\.mp4$/i.test(media[1])
         ? <video src={media[1]} controls style={{ maxWidth: '100%', borderRadius: 10, marginBottom: 6 }} />
         : <audio src={media[1]} controls style={{ width: '100%', marginBottom: 6 }} />)}
       <span>{parts.map((p, i) => /^https?:\/\//.test(p)
-        ? <a key={i} href={p} target="_blank" rel="noopener noreferrer" style={{ color: '#fff', textDecoration: 'underline', wordBreak: 'break-all' }}>{p}</a>
+        ? <a key={i} href={p} target="_blank" rel="noopener noreferrer" style={{ color: linkColor, textDecoration: 'underline', fontWeight: 600, wordBreak: 'break-all' }}>{p}</a>
         : <span key={i}>{p}</span>)}</span>
     </>
   )
@@ -190,7 +193,7 @@ export default function SupportChat() {
                   padding: '8px 11px', fontSize: 14, lineHeight: 1.45, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
                   boxShadow: mine ? 'none' : '0 1px 2px rgba(0,0,0,.04)',
                 }}>
-                  <Body text={m.body} />
+                  <Body text={m.body} mine={mine} />
                 </div>
               )
             })}
