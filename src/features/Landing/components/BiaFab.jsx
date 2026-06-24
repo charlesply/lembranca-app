@@ -10,7 +10,7 @@
 // - Lê localStorage SÍNCRONO na renderização (sem state) — mesmo
 //   comportamento do código original. Se o pedido salvo mudar, basta
 //   a página rerenderizar.
-export default function BiaFab({ visible, supportNum = '5511915301862' }) {
+export default function BiaFab({ visible, supportNum = '558796239763' }) {
   const saved = (() => {
     try { return JSON.parse(localStorage.getItem('hc_current_order') || 'null') } catch (_) { return null }
   })()
