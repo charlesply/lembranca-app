@@ -69,17 +69,23 @@ export default function SupportChat() {
   // TELA, publicada pelo App em window.__lcView / evento 'lc:view'.
   const isOrderPage = /^\/(p|finalizar|promo)\//i.test(loc.pathname)
   const [appView, setAppView] = useState(() => { try { return window.__lcView || null } catch { return null } })
+  const [appBusy, setAppBusy] = useState(() => { try { return !!window.__lcBusy } catch { return false } })
   const [revealed, setRevealed] = useState(isOrderPage)
 
   useEffect(() => {
-    const onView = (e) => setAppView(e?.detail || null)
+    const onView = (e) => {
+      const d = e?.detail
+      if (d && typeof d === 'object') { setAppView(d.view || null); setAppBusy(!!d.busy) }
+      else { setAppView(d || null) }
+    }
     window.addEventListener('lc:view', onView)
-    try { if (window.__lcView) setAppView(window.__lcView) } catch (_) {}
+    try { if (window.__lcView) setAppView(window.__lcView); setAppBusy(!!window.__lcBusy) } catch (_) {}
     return () => window.removeEventListener('lc:view', onView)
   }, [])
 
-  // 🚫 PROIBIDO no quiz e enquanto gera a prévia — NUNCA por cima do fluxo de criação.
-  const blocked = !isOrderPage && (appView === 'quiz' || appView === 'progress')
+  // 🚫 PROIBIDO enquanto o App está "ocupado": gerando prévia (progress) OU com o quiz/
+  // chat de criação aberto. NUNCA por cima do fluxo de criação.
+  const blocked = !isOrderPage && appBusy
 
   // Reaparece só após ROLAR (home, result-após-prévia, etc.). Páginas de pedido: de
   // cara. Reseta a cada troca de tela → result também exige rolar (mesma lógica da home).

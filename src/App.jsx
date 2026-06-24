@@ -1660,11 +1660,6 @@ export default function App() {
     : _devProgress != null ? 'progress'
     : (_devResult ? 'result' : 'landing')
   )
-  // Publica a tela atual → o widget de suporte (montado no router, fora do App) sabe
-  // quando NÃO pode aparecer (quiz / gerando prévia). Proíbe o FAB sobre o fluxo.
-  useEffect(() => {
-    try { window.__lcView = view; window.dispatchEvent(new CustomEvent('lc:view', { detail: view })) } catch (_) {}
-  }, [view])
   const [ctaVisible, setCtaVisible] = useState(false)
   const [toastVisible, setToastVisible] = useState(false)
   const [toastData, setToastData] = useState({ initials: 'RO', name: 'Rafael Oliveira', time: '1 min' })
@@ -2404,6 +2399,12 @@ export default function App() {
   }
   const [chatModal, setChatModal] = useState(false)
   const [quizModal, setQuizModal] = useState(false)
+  // Publica o estado da UI → o widget de suporte (no router, fora do App) sabe quando
+  // NÃO pode aparecer: gerando prévia (progress) ou com o quiz/chat de criação aberto.
+  useEffect(() => {
+    const busy = view === 'progress' || quizModal || chatModal
+    try { window.__lcView = view; window.__lcBusy = busy; window.dispatchEvent(new CustomEvent('lc:view', { detail: { view, busy } })) } catch (_) {}
+  }, [view, quizModal, chatModal])
   const [offerEnd] = useState(getOfferEnd)
   // CTA "Criar música": abre o QUIZ (fluxo primário) ou, se desligado, o chat da Bia.
   const scrollToForm = () => {
