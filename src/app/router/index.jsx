@@ -16,7 +16,7 @@ import App from '../../App.jsx'
 import { DeliveryPage } from '../../features/Delivery'
 import { PaymentPage } from '../../features/Payment'
 import { PromoPage } from '../../features/Promo'
-import SupportChat from '../../features/Support/SupportChat.jsx'
+// import SupportChat from '../../features/Support/SupportChat.jsx' // EMERGÊNCIA: chat do site (descomentar quando o WhatsApp cair)
 
 export default function AppRouter() {
   return (
@@ -28,9 +28,10 @@ export default function AppRouter() {
         {/* Catch-all: tudo o resto cai no App (inclui /admin, query params, etc.) */}
         <Route path="*" element={<App />} />
       </Routes>
-      {/* Atendimento próprio no site (substitui o WhatsApp banido). Em todas as rotas;
-          lê o order_id da URL/localStorage e já abre sabendo o pedido do cliente. */}
-      <SupportChat />
+      {/* Suporte primário = WhatsApp (BiaFab/wa.me). O chat do site fica DORMENTE como
+          fallback de emergência: descomentar <SupportChat/> (e o import acima) + ocultar
+          o BiaFab quando o número cair. Backend do site-chat segue no ar. */}
+      {/* <SupportChat /> */}
     </BrowserRouter>
   )
 }
