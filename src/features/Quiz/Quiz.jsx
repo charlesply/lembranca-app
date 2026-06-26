@@ -421,7 +421,8 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
         s.push({ type: 'childOpen', idx: i })
         const c = children[i] || {}
         const age = Number(c.age || 0)
-        if (rel.team && age > 0 && age <= 16) {
+        // bebê (idade em meses) não recebe pergunta de time
+        if (rel.team && age > 0 && age <= 16 && (c.ageUnit || 'anos') === 'anos') {
           s.push({ type: 'childTeam', idx: i })
         }
       }
@@ -467,7 +468,7 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
     if (rel && rel.kind === 'child') {
       setChildren(prev => {
         const next = prev.slice(0, count)
-        while (next.length < count) next.push({ name: '', age: '', gender: '', traits: [], open: '', team: '' })
+        while (next.length < count) next.push({ name: '', age: '', ageUnit: 'anos', gender: '', traits: [], open: '', team: '' })
         return next
       })
     }
@@ -482,7 +483,7 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
   /* ── menor idade entre as crianças (proxy para regra "Infantil" no gênero) ── */
   const minChildAge = useMemo(() => {
     if (rel?.kind !== 'child') return 999
-    const ages = children.slice(0, count).map(c => Number(c.age) || 0).filter(a => a > 0)
+    const ages = children.slice(0, count).map(c => { const a = Number(c.age) || 0; return (c.ageUnit === 'meses') ? Math.ceil(a / 12) : a }).filter(a => a > 0)
     return ages.length ? Math.min(...ages) : 999
   }, [children, count, rel])
 
@@ -729,7 +730,11 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
         const cg = c.gender || 'm'
         const poss = (rel.posesByGender && rel.posesByGender[cg]) || rel.poss || 'pessoa especial'
         let p = `${c.name} é ${poss}`
-        if (c.age) p += ` de ${c.age} anos`
+        if (c.age) {
+          const n = Number(c.age)
+          const unit = (c.ageUnit === 'meses') ? (n === 1 ? 'mês' : 'meses') : (n === 1 ? 'ano' : 'anos')
+          p += ` de ${c.age} ${unit}`
+        }
         p += '.'
         if (c.traits && c.traits.length) p += ` ${ele(cg)} é ${c.traits.join(', ')}.`
         if (c.open) p += ` ${c.open.trim().replace(/\.?$/, '.')}`
@@ -906,7 +911,23 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
             <input className="input-text" type="number" inputMode="numeric"
               value={c.age || ''}
               onChange={e => setChild(screen.idx, { age: e.target.value.replace(/\D/g, '').slice(0, 3) })}
-              placeholder="Idade..." aria-invalid={!!ageErr} />
+              placeholder={(c.ageUnit || 'anos') === 'meses' ? 'Ex: 8' : 'Idade...'} aria-invalid={!!ageErr} />
+            {/* Anos ou Meses — pra bebês (neném de poucos meses). Default: Anos. */}
+            <div style={{ display: 'flex', gap: 8, marginTop: 10 }} role="radiogroup" aria-label="Unidade da idade">
+              {[['anos', 'Anos'], ['meses', 'Meses']].map(([u, lbl]) => {
+                const sel = (c.ageUnit || 'anos') === u
+                return (
+                  <button key={u} type="button" role="radio" aria-checked={sel}
+                    onClick={() => setChild(screen.idx, { ageUnit: u })}
+                    style={{
+                      flex: 1, padding: '10px 12px', borderRadius: 10, cursor: 'pointer',
+                      fontSize: 15, fontWeight: sel ? 700 : 500,
+                      border: sel ? '2px solid #AB4B2B' : '1px solid #e2d6cf',
+                      background: sel ? '#FBEEE8' : '#fff', color: sel ? '#AB4B2B' : '#6b5b52',
+                    }}>{lbl}</button>
+                )
+              })}
+            </div>
             {ageErr && <p className="quiz-hint" style={{ marginTop: 8, color: 'var(--c-danger)' }} role="alert">{ageErr}</p>}
           </>
         )
@@ -1253,7 +1274,7 @@ function ChildOpenScreen({ c, nm, hint, setChild, idx, apiTranscribe, audioStopR
 /* ─── Tela de revisão · resumo do pedido antes de enviar ─── */
 function ReviewScreen({ rel, honoree, count, children, traits, open1, open2, exTone, team, occasion, feeling, genre, mood, voice, clientName, phone, onJumpTo }) {
   const honoreeLine = rel?.kind === 'child'
-    ? children.slice(0, count).map(c => `${c.name || '—'}${c.age ? ` (${c.age})` : ''}`).filter(Boolean).join(', ')
+    ? children.slice(0, count).map(c => `${c.name || '—'}${c.age ? ` (${c.age} ${c.ageUnit === 'meses' ? 'meses' : 'anos'})` : ''}`).filter(Boolean).join(', ')
     : honoree
 
   // História — pra relação `child`, a história está em children[i].open (1 por filho).
