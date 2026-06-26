@@ -72,11 +72,6 @@ const validateName = (s) => {
   if (!v) return null
   if (v.length < 2) return 'Coloca o nome certinho 😊'
   if (!NAME_OK_CHARS.test(v)) return 'O nome só pode ter letras 😊'
-  if (!VOWEL_RE.test(v)) return 'Esse nome parece estranho 🤔 Confere pra mim?'
-  if (TRIPLE_LETTER.test(v)) return 'Esse nome parece estranho 🤔 Confere pra mim?'
-  if (DOUBLE_RARE.test(v)) return 'Esse nome parece estranho 🤔 Confere pra mim?'
-  if (CONSONANT_RUN.test(v)) return 'Esse nome parece estranho 🤔 Confere pra mim?'
-  if (v.split(/\s+/).some(w => w.length > 15)) return 'Esse nome parece estranho 🤔 Confere pra mim?'
   return null
 }
 
@@ -87,11 +82,6 @@ const validateFullName = (s) => {
   const words = v.split(/\s+/).filter(Boolean)
   if (!NAME_OK_CHARS.test(v)) return 'O nome só pode ter letras 😊'
   if (words.filter(w => w.replace(/[^A-Za-zÀ-ÿ]/g, '').length >= 2).length < 2) return 'Coloca seu nome e sobrenome 😊'
-  if (!VOWEL_RE.test(v)) return 'Esse nome parece estranho 🤔 Confere pra mim?'
-  if (TRIPLE_LETTER.test(v)) return 'Esse nome parece estranho 🤔 Confere pra mim?'
-  if (DOUBLE_RARE.test(v)) return 'Esse nome parece estranho 🤔 Confere pra mim?'
-  if (CONSONANT_RUN.test(v)) return 'Esse nome parece estranho 🤔 Confere pra mim?'
-  if (words.some(w => w.length > 15)) return 'Esse nome parece estranho 🤔 Confere pra mim?'
   return null
 }
 
