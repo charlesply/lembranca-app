@@ -702,7 +702,7 @@ function pixBRCode({ key, amount, name = PIX_MERCHANT_NAME, city = PIX_MERCHANT_
 // um ping pro backend, que (1) salva o pedido de ajuda no proof_ai_data e
 // (2) avisa o admin no Evolution imediatamente. Resultado: a Bia já vê o
 // chat aberto sabendo de quem é, qual pedido, qual o problema da rejeição.
-const BIA_PHONE_E164 = '5511920103970'
+const BIA_PHONE_E164 = '5511920933097'
 async function openHelpOnWhatsApp({ orderId, honoreeName, customerName, customerPhone, reasons = [], context = 'rejected' }) {
   const id8 = String(orderId || '').slice(0, 8).toUpperCase()
   // Mensagem repaginada (jun/2026): bem mais curta, escaneavel, focada em
@@ -1299,7 +1299,7 @@ function PreviewResultView({ resultData, onBuy, onWhatsApp, onNew, payLoading })
         {/* Botão WhatsApp flutuante — só aparece após pagamento.
             Suporte direto pra dúvidas com a Bia, manda nome do cliente, do homenageado, plano e link. */}
         {resultData?.unlocked && (() => {
-          const supportNum = '5511920103970'
+          const supportNum = '5511920933097'
           const honoree = resultData?.honoreeName || 'minha música'
           const clientName = (resultData?.customerName || resultData?.clientName || resultData?.customer_name || '').trim()
           const greet = clientName ? `Olá Bia! Aqui é ${clientName}` : 'Olá Bia!'
@@ -1642,7 +1642,7 @@ export default function App() {
   const _devResult = (() => {
     try {
       const v = new URLSearchParams(window.location.search).get('devResult')
-      return v === '1' || v === '2'   // 1 = bloqueada, 2 = desbloqueada
+      return v === '1' || v === '2' || v === '3'   // 1=bloqueada, 2=desbloqueada, 3=completa producing
     } catch (_) { return false }
   })()
   const _devError = (() => {
@@ -1668,7 +1668,14 @@ export default function App() {
   const [statusMsg, setStatusMsg] = useState('')
   // ?devResult=1 → bloqueada (padrão); ?devResult=2 → já desbloqueada (download)
   const _devResultUnlocked = (() => {
-    try { return new URLSearchParams(window.location.search).get('devResult') === '2' } catch (_) { return false }
+    try {
+      const v = new URLSearchParams(window.location.search).get('devResult')
+      return v === '2' || v === '3'
+    } catch (_) { return false }
+  })()
+  // devResult=3 → plano completa pago SEM video ainda (testa UI "produzindo")
+  const _devProducingVideo = (() => {
+    try { return new URLSearchParams(window.location.search).get('devResult') === '3' } catch (_) { return false }
   })()
   const [resultData, setResultData] = useState(_devResult ? {
     title: 'Para Mariana',
@@ -1678,9 +1685,9 @@ export default function App() {
     tags: 'Sertanejo · Romântico',
     preview_url: '/assets/musicas/m1.mp3',
     original_url: '/assets/musicas/m2.mp3',
-    // 2ª versão como BRINDE (sunoapi.org gera 2 por chamada)
     bonus_url: _devResultUnlocked ? '/assets/musicas/m3.mp3' : null,
-    video_url: _devResultUnlocked ? '/assets/musicas/m3.mp3' : null,
+    video_url: (_devResultUnlocked && !_devProducingVideo) ? '/assets/musicas/m3.mp3' : null,
+    plan: _devProducingVideo ? 'completa' : null,
     orderId: 'dev-mock-1730a4b8',
     fullDurationSec: 189,
     previewLimitSec: 50,
@@ -1945,9 +1952,9 @@ export default function App() {
     })
   }
   const closePixModal = () => setPixModal(null)
-  const BIA_PHONE = '5511920103970'
+  const BIA_PHONE = '5511920933097'
   const INSTAGRAM = 'https://instagram.com/historiascantadasbr'
-  const WHATSAPP = `https://wa.me/${'5511920103970'}`
+  const WHATSAPP = `https://wa.me/${'5511920933097'}`
   const lastScrollY = useRef(0)
   const headerRef = useRef(null)
   const ticking = useRef(false)
@@ -3169,9 +3176,9 @@ export default function App() {
     ]},
     { title: 'Empresa', links: [
       { label: 'Sobre nós', href: '#how' },
-      { label: 'Contato',   href: `https://wa.me/${'5511920103970'}`, external: true },
+      { label: 'Contato',   href: `https://wa.me/${'5511920933097'}`, external: true },
       { label: 'Instagram', href: 'https://instagram.com/historiascantadasbr', external: true },
-      { label: 'WhatsApp',  href: `https://wa.me/${'5511920103970'}`, external: true },
+      { label: 'WhatsApp',  href: `https://wa.me/${'5511920933097'}`, external: true },
     ]},
     { title: 'Legal', links: [
       { label: 'Termos de uso', href: '/termos.html', external: true },
