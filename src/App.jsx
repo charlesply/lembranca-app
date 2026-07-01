@@ -1180,8 +1180,8 @@ function MusicSelfEdit({ order, onClose, onConfirmed }) {
     <div className="mse">
       {step !== 'sending' && (
         <div className="mse-head">
-          <strong>Ajustar a música do {order.honoree_name || 'seu homenageado'}</strong>
-          <p>Você pode ajustar sua música <b>uma vez</b>, sem custo 💛 Escolha o que prefere mexer:</p>
+          <strong>Ajustar {order.paid_at ? 'a música' : 'a prévia'} do {order.honoree_name || 'seu homenageado'}</strong>
+          <p>Você pode ajustar sua {order.paid_at ? 'música' : 'prévia'} <b>uma vez</b>, sem custo 💛 Escolha o que prefere mexer:</p>
         </div>
       )}
       {err && <div className="mse-err">{err}</div>}
@@ -1260,7 +1260,7 @@ function MusicSelfEdit({ order, onClose, onConfirmed }) {
           <p className="mse-count">{genLeft > 0 ? `Você pode gerar uma nova letra mais ${genLeft}×` : 'Você já usou as 3 gerações — pode editar o texto acima à vontade.'}</p>
 
           <button type="button" className="mse-confirm" disabled={busy || !lyrics.trim()} onClick={() => setStep('confirm')}>
-            ✅ Confirmar e criar minha nova música
+            ✅ Confirmar e criar minha nova {order.paid_at ? 'música' : 'prévia'}
           </button>
           <button type="button" className="mse-back" onClick={() => setStep('menu')}>‹ Voltar</button>
         </div>
@@ -1270,20 +1270,24 @@ function MusicSelfEdit({ order, onClose, onConfirmed }) {
       {step === 'confirm' && (
         <div className="mse-confirmbox">
           <div className="mse-confirm-ic">🎶</div>
-          <strong>Criar sua nova música?</strong>
-          <p>Vou criar <b>2 versões novas</b>{order.plan === 'completa' ? ' + um vídeo novo com a letra' : ''} a partir dessa letra. Suas <b>2 versões atuais continuam salvas</b> aqui.</p>
-          <p className="mse-warn">⚠️ Esse ajuste é <b>único</b> — depois de criar, não dá pra editar essa música de novo (só criar outra do zero).</p>
-          <button type="button" className="mse-confirm" disabled={busy} onClick={doConfirm}>{busy ? 'Enviando…' : 'Sim, criar minha nova música'}</button>
+          <strong>Criar sua nova {order.paid_at ? 'música' : 'prévia'}?</strong>
+          {order.paid_at
+            ? <p>Vou criar <b>2 versões novas</b>{order.plan === 'completa' ? ' + um vídeo novo com a letra' : ''} a partir dessa letra. Suas <b>2 versões atuais continuam salvas</b> aqui.</p>
+            : <p>Vou criar uma <b>nova prévia</b> da sua música a partir dessa letra. Depois é só finalizar o pagamento pra liberar a versão completa 😉</p>}
+          <p className="mse-warn">⚠️ Esse ajuste é <b>único</b> — depois de criar, não dá pra editar de novo (só criar outra do zero).</p>
+          <button type="button" className="mse-confirm" disabled={busy} onClick={doConfirm}>{busy ? 'Enviando…' : `Sim, criar minha nova ${order.paid_at ? 'música' : 'prévia'}`}</button>
           <button type="button" className="mse-back" onClick={() => setStep('lyrics')}>‹ Rever a letra</button>
         </div>
       )}
 
-      {/* ── SENDING: música em produção ── */}
+      {/* ── SENDING: em produção ── */}
       {step === 'sending' && (
         <div className="mse-sending">
           <div className="mse-sending-ic">🎼</div>
-          <strong>Sua nova música está sendo criada!</strong>
-          <p>Fica pronta em <b>5 a 10 minutinhos</b>. Assim que ficar, eu te aviso por <b>e-mail</b> e ela aparece aqui automaticamente — com as 2 versões novas junto das atuais 💛</p>
+          <strong>Sua nova {order.paid_at ? 'música' : 'prévia'} está sendo criada!</strong>
+          {order.paid_at
+            ? <p>Fica pronta em <b>5 a 10 minutinhos</b>. Assim que ficar, eu te aviso por <b>e-mail</b> e ela aparece aqui automaticamente — com as 2 versões novas junto das atuais 💛</p>
+            : <p>Fica pronta em <b>5 a 10 minutinhos</b> e aparece aqui automaticamente. Aí é só <b>finalizar o pagamento</b> pra liberar a música completa 💛</p>}
           <button type="button" className="mse-confirm" onClick={onClose}>Entendi!</button>
         </div>
       )}
@@ -1368,7 +1372,7 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
       <div className="my-order-actions">
         <a className="my-order-btn my-order-btn--primary" href={url} download={dl}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Baixar
+          Salvar Música
         </a>
         <ShareButton url={url} kind="audio" honoreeName={null} title={label} label="Enviar no WhatsApp" variant="whatsapp" />
       </div>
@@ -1390,7 +1394,8 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
     const editErr = o.edit_status === 'error'
     // Estados do self-edit
     const regenerating = o.edit_status === 'regenerating' || (justSent[o.id] && !['done', 'error'].includes(o.edit_status))
-    const canEdit = MSE_ENABLED && !!o.paid_at && !o.self_edit_used && !hasEdit && !regenerating && !editErr
+    // Pode editar quem pagou OU quem tem prévia (ajusta a prévia, ainda vai pagar).
+    const canEdit = MSE_ENABLED && (!!o.paid_at || !!o.preview_audio_url) && !o.self_edit_used && !hasEdit && !regenerating && !editErr
     // Layout "novas em destaque + originais recolhidas": só quando a nova já
     // ficou pronta (durante a regeneração ainda mostra as atuais normalmente).
     const showNewLayout = hasEdit && !regenerating
@@ -1402,11 +1407,20 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
           Voltar para minhas músicas
         </button>
-        <div className="my-order-detail-head">
-          <strong className="my-order-name">Para {o.honoree_name || 'alguém especial'}</strong>
-          <span className="my-order-date">{fmtDate(o.created_at)}</span>
-          <span className={`my-order-status my-order-status--${st.cls}`}><span aria-hidden="true">{st.icon}</span> {st.label}</span>
-        </div>
+        {o.paid_at ? (
+          // Design "DeliveryPage": herói centralizado.
+          <div className="my-order-hero">
+            <div className="my-order-hero-emoji">🎵</div>
+            <h2 className="my-order-hero-title">Sua música para <span>{o.honoree_name || 'você'}</span></h2>
+            <p className="my-order-hero-sub">Pagamento confirmado — aproveite!</p>
+          </div>
+        ) : (
+          <div className="my-order-detail-head">
+            <strong className="my-order-name">Para {o.honoree_name || 'alguém especial'}</strong>
+            <span className="my-order-date">{fmtDate(o.created_at)}</span>
+            <span className={`my-order-status my-order-status--${st.cls}`}><span aria-hidden="true">{st.icon}</span> {st.label}</span>
+          </div>
+        )}
 
         {o.paid_at ? (
           <>
@@ -1421,12 +1435,13 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
             {o.video_brinde_url ? (
               <div className="my-order-version">
                 <span className="my-order-version-label">🎬 Vídeo com a letra</span>
+                <video className="my-order-video" src={o.video_brinde_url} controls preload="metadata" playsInline />
                 <div className="my-order-actions">
-                  <a className="my-order-btn" href={o.video_brinde_url} download={`lembrancacantada-${safeName}.mp4`}>
+                  <a className="my-order-btn my-order-btn--primary" href={o.video_brinde_url} download={`lembrancacantada-${safeName}.mp4`}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-                    Baixar vídeo
+                    Salvar Vídeo
                   </a>
-                  <ShareButton url={o.video_brinde_url} kind="video" honoreeName={o.honoree_name} title={`Para ${o.honoree_name || 'você'}`} label="Enviar vídeo no WhatsApp" variant="whatsapp" />
+                  <ShareButton url={o.video_brinde_url} kind="video" honoreeName={o.honoree_name} title={`Para ${o.honoree_name || 'você'}`} label="Enviar no WhatsApp" variant="whatsapp" />
                 </div>
               </div>
             ) : videoGenerating ? (
@@ -1443,32 +1458,11 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
               </>
             )}
 
-            {/* ── SELF-EDIT: ajustar a própria música (1x) ── */}
-            {isEditing ? (
-              <MusicSelfEdit
-                order={o}
-                onClose={() => setEditingId(null)}
-                onConfirmed={() => setJustSent(s => ({ ...s, [o.id]: true }))}
-              />
-            ) : regenerating ? (
-              <div className="my-order-regen">
-                <div className="my-order-regen-ic">🎼</div>
-                <strong>Sua nova música está sendo criada</strong>
-                <p>Fica pronta em 5 a 10 minutinhos. A gente te avisa por e-mail e ela aparece aqui automaticamente 💛</p>
-              </div>
-            ) : editErr ? (
-              <p className="my-order-edit-done my-order-edit-err">Tivemos um probleminha pra criar sua nova música — a nossa equipe já foi avisada e vai resolver pra você 💛</p>
-            ) : hasEdit || o.self_edit_used ? (
-              <p className="my-order-edit-done">✓ Você já criou sua versão nova dessa música. Pra outra, é só criar uma nova do zero 💛</p>
-            ) : canEdit ? (
-              <button type="button" className="my-order-edit-btn" onClick={() => setEditingId(o.id)}>
-                ✏️ Quero ajustar minha música
-              </button>
-            ) : null}
           </>
         ) : (
+          // NÃO PAGO: prévia (nova, se ajustou) + finalizar pagamento abaixo.
           <div className="my-order-version">
-            {o.preview_audio_url && <><span className="my-order-version-label">Prévia</span><MiniPlayer src={o.preview_audio_url} label="Prévia (0:50)" /></>}
+            {o.preview_audio_url && <><span className="my-order-version-label">{o.self_edit_used ? '✨ Prévia nova' : 'Prévia'}</span><MiniPlayer src={o.preview_audio_url} label="Prévia (0:50)" /></>}
             <div className="my-order-actions">
               <button type="button" className="my-order-btn my-order-btn--primary" onClick={() => onPayPending && onPayPending(o)}>
                 Finalizar pagamento →
@@ -1476,6 +1470,29 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
             </div>
           </div>
         )}
+
+        {/* ── SELF-EDIT (comum a PAGO e PRÉVIA; 1×) ── */}
+        {isEditing ? (
+          <MusicSelfEdit
+            order={o}
+            onClose={() => setEditingId(null)}
+            onConfirmed={() => setJustSent(s => ({ ...s, [o.id]: true }))}
+          />
+        ) : regenerating ? (
+          <div className="my-order-regen">
+            <div className="my-order-regen-ic">🎼</div>
+            <strong>Sua nova {o.paid_at ? 'música' : 'prévia'} está sendo criada</strong>
+            <p>Fica pronta em 5 a 10 minutinhos e aparece aqui automaticamente{o.paid_at ? ', e a gente te avisa por e-mail' : ''} 💛</p>
+          </div>
+        ) : editErr ? (
+          <p className="my-order-edit-done my-order-edit-err">Tivemos um probleminha pra criar sua nova {o.paid_at ? 'música' : 'prévia'} — a nossa equipe já foi avisada e vai resolver pra você 💛</p>
+        ) : (o.self_edit_used && o.paid_at) ? (
+          <p className="my-order-edit-done">✓ Você já criou sua versão nova dessa música. Pra outra, é só criar uma nova do zero 💛</p>
+        ) : canEdit ? (
+          <button type="button" className="my-order-edit-btn" onClick={() => setEditingId(o.id)}>
+            ✏️ Quero ajustar minha {o.paid_at ? 'música' : 'prévia'}
+          </button>
+        ) : null}
       </div>
     )
   }

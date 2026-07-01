@@ -1666,6 +1666,27 @@ body {
   color: #fff;
 }
 
+/* ── Herói do detalhe pago (estilo DeliveryPage: "Sua música para X") ── */
+.my-order-hero {
+  text-align: center;
+  padding: 8px 8px 18px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.my-order-hero-emoji { font-size: 44px; line-height: 1; }
+.my-order-hero-title {
+  font-family: var(--c-font-display);
+  font-size: 23px; font-weight: 700; margin: 2px 0 0; color: var(--c-text);
+  letter-spacing: var(--c-ls-tight);
+}
+.my-order-hero-title span { color: var(--c-accent); }
+.my-order-hero-sub { margin: 0; font-size: 14.5px; color: var(--c-text-faint); }
+
+/* Player de vídeo inline (o "mais bonito" pedido) */
+.my-order-video {
+  width: 100%; border-radius: 12px; background: #000; margin: 2px 0 2px;
+  aspect-ratio: 1 / 1; object-fit: contain;
+}
+
 /* ── Agrupador de versões (originais vs novas, quando o cliente editou) ── */
 .my-order-vgroup {
   font-family: var(--c-font-mono);
