@@ -222,7 +222,7 @@ export function MusicSelfEdit({ order, onClose, onConfirmed }) {
           <strong>Sua nova {order.paid_at ? 'música' : 'prévia'} está sendo criada!</strong>
           {order.paid_at
             ? <p>Fica pronta em <b>5 a 10 minutinhos</b>. Assim que ficar, eu te aviso por <b>e-mail</b> e ela aparece aqui automaticamente — com as 2 versões novas junto das atuais 💛</p>
-            : <p>Fica pronta em <b>5 a 10 minutinhos</b> e aparece aqui automaticamente. Aí é só <b>finalizar o pagamento</b> pra liberar a música completa 💛</p>}
+            : <p>Fica pronta em <b>5 a 10 minutinhos</b> e aparece aqui automaticamente. Assim que ficar, eu <b>te aviso por e-mail</b> também. Aí é só <b>finalizar o pagamento</b> pra liberar a música completa 💛</p>}
           <button type="button" className="mse-confirm" onClick={onClose}>Entendi!</button>
         </div>
       )}

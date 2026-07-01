@@ -161,7 +161,9 @@ export default function PaymentPage() {
           Finalize aqui pra liberar a versão completa em alta qualidade.
         </p>
 
-        {preview && !editing && (
+        {/* Durante a regeneração a prévia antiga SOME — só reaparece (como "nova")
+            quando a nova fica pronta (edit_status='done', regenerating=false). */}
+        {preview && !editing && !regenerating && (
           <section className="pp-section">
             <h2>🎧 {order.self_edit_used ? 'Sua prévia nova' : 'Sua prévia'}</h2>
             <audio controls preload="metadata" src={preview} style={{ width: '100%' }} />
@@ -183,7 +185,7 @@ export default function PaymentPage() {
             <div className="pp-editregen">
               <div className="pp-editregen-ic">🎼</div>
               <strong>Sua nova prévia está sendo criada</strong>
-              <p>Fica pronta em 5 a 10 minutinhos e aparece aqui automaticamente. Aí é só finalizar o pagamento 💛</p>
+              <p>Fica pronta em 5 a 10 minutinhos e aparece aqui automaticamente — e a gente te avisa por e-mail também. Aí é só finalizar o pagamento 💛</p>
             </div>
           </section>
         ) : editErr ? (

@@ -1231,7 +1231,8 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
         ) : (
           // NÃO PAGO: prévia (nova, se ajustou) + finalizar pagamento abaixo.
           <div className="my-order-version">
-            {o.preview_audio_url && <><span className="my-order-version-label">{o.self_edit_used ? '✨ Prévia nova' : 'Prévia'}</span><MiniPlayer src={o.preview_audio_url} label="Prévia (0:50)" /></>}
+            {/* Durante a regeneração a prévia antiga some — só reaparece (como nova) quando pronta. */}
+            {o.preview_audio_url && !regenerating && <><span className="my-order-version-label">{o.self_edit_used ? '✨ Prévia nova' : 'Prévia'}</span><MiniPlayer src={o.preview_audio_url} label="Prévia (0:50)" /></>}
             <div className="my-order-actions">
               <button type="button" className="my-order-btn my-order-btn--primary" onClick={() => onPayPending && onPayPending(o)}>
                 Finalizar pagamento →
@@ -1251,7 +1252,7 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
           <div className="my-order-regen">
             <div className="my-order-regen-ic">🎼</div>
             <strong>Sua nova {o.paid_at ? 'música' : 'prévia'} está sendo criada</strong>
-            <p>Fica pronta em 5 a 10 minutinhos e aparece aqui automaticamente{o.paid_at ? ', e a gente te avisa por e-mail' : ''} 💛</p>
+            <p>Fica pronta em 5 a 10 minutinhos e aparece aqui automaticamente, e a gente te avisa por e-mail 💛</p>
           </div>
         ) : editErr ? (
           <p className="my-order-edit-done my-order-edit-err">Tivemos um probleminha pra criar sua nova {o.paid_at ? 'música' : 'prévia'} — a nossa equipe já foi avisada e vai resolver pra você 💛</p>
