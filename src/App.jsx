@@ -1061,6 +1061,203 @@ function ShareButton({ url, kind = 'audio', honoreeName, label = 'Enviar no What
 }
 
 /* ══════════════════════════════════════════════════════════════
+   SELF-EDIT · O cliente ajusta a PRÓPRIA música (1 vez), igual o
+   admin faz no CRM. Pode gerar nova letra até 3× (editar o texto à
+   vontade) mas só gera 1 música nova. Dois caminhos: mexer na LETRA
+   direto (+ campo "o que quer mudar", estilo WhatsApp) ou mudar os
+   DADOS (nome, história, ritmo, ocasião, voz) e gerar letra deles.
+   ⚠️ MOCK: gerar-letra e confirmar estão SIMULADOS (backend a ligar).
+   ══════════════════════════════════════════════════════════════ */
+// 🧪 Enquanto for MOCK (backend não ligado), o editor só aparece com o flag
+// ?selfedit=1 (fica salvo no navegador) — cliente real NÃO vê. Ao ligar o
+// backend de verdade, trocar por `true`.
+const MSE_ENABLED = (() => {
+  try {
+    const has = new URLSearchParams(location.search).has('selfedit')
+    if (has) localStorage.setItem('lc_selfedit', '1')
+    return has || localStorage.getItem('lc_selfedit') === '1'
+  } catch { return false }
+})()
+const MSE_MAX_GENS = 3
+const MSE_RITMOS = ['Sertanejo', 'MPB', 'Pop romântico', 'Pagode', 'Gospel', 'Forró', 'Rock', 'Rap', 'Piano/Voz']
+const MSE_OCASIOES = ['Aniversário', 'Casamento', 'Bodas', 'Dia das Mães', 'Homenagem', 'Declaração de amor', 'Amizade', 'Formatura', 'Saudade', 'Outra']
+const MSE_VOZES = ['Feminina', 'Masculina']
+const MSE_SAMPLE = 'Aqui vai aparecer a letra da sua música\npra você ajustar do jeitinho que quiser…'
+
+function MusicSelfEdit({ order, onClose, onConfirmed }) {
+  // passo: 'menu' | 'data' | 'lyrics' | 'confirm' | 'sending'
+  const [step, setStep] = useState('menu')
+  const [lyrics, setLyrics] = useState(order.final_lyrics || '')
+  const [genLeft, setGenLeft] = useState(MSE_MAX_GENS)
+  const [busy, setBusy] = useState(false)
+  const [instruction, setInstruction] = useState('')
+  const [form, setForm] = useState({
+    honoree_name: order.honoree_name || '',
+    story: order.story || order.history || '',
+    genre: order.genre || order.style_raw || '',
+    occasion: order.occasion || '',
+    voice: order.voice_preference || '',
+  })
+
+  // A letra (final_lyrics) não vem no lookup — busca no /status ao abrir.
+  useEffect(() => {
+    if (order.final_lyrics) return
+    let alive = true
+    fetch(`${API_URL}/api/order/${order.id}/status`).then(r => r.json()).then(d => {
+      if (!alive || !d) return
+      if (d.final_lyrics) setLyrics(prev => prev || d.final_lyrics)
+      setForm(f => ({ ...f, honoree_name: d.honoree_name || f.honoree_name }))
+    }).catch(() => {})
+    return () => { alive = false }
+  }, [order.id])
+
+  const setField = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  // MOCK da geração de letra — o backend fará via GPT (generateLyricsWithGPT
+  // no modo 'dados', ou aplicando a instrução livre na letra atual).
+  const genLyrics = async (mode) => {
+    if (genLeft <= 0 || busy) return
+    if (mode === 'instruction' && !instruction.trim()) return
+    setBusy(true)
+    await new Promise(r => setTimeout(r, 1200))
+    const base = (lyrics || MSE_SAMPLE)
+    const head = mode === 'data'
+      ? `✨ Nova letra a partir dos seus dados (${form.honoree_name || 'homenagem'}${form.genre ? ' · ' + form.genre : ''})`
+      : `✨ Letra ajustada — "${instruction.trim()}"`
+    setLyrics(`${head}\n\n${base}`)
+    setGenLeft(n => n - 1)
+    setInstruction('')
+    setBusy(false)
+    setStep('lyrics')
+  }
+
+  const doConfirm = async () => {
+    if (busy) return
+    setBusy(true)
+    // MOCK: o backend vai (1) snapshot das 2 versões atuais, (2) marcar
+    // self_edit_used, (3) disparar a Inngest de regeneração + e-mail.
+    await new Promise(r => setTimeout(r, 1000))
+    setBusy(false)
+    setStep('sending')
+    onConfirmed && onConfirmed()
+  }
+
+  const genBtnLabel = genLeft > 0 ? `🪄 Gerar nova letra` : 'Limite de letras atingido'
+
+  return (
+    <div className="mse">
+      {/* MOCK banner — remover ao ligar no backend */}
+      <div className="mse-mock">🧪 Prévia do fluxo (mock) — gerar letra e confirmar estão simulados</div>
+
+      {step !== 'sending' && (
+        <div className="mse-head">
+          <strong>Ajustar a música do {order.honoree_name || 'seu homenageado'}</strong>
+          <p>Você pode ajustar sua música <b>uma vez</b>, sem custo 💛 Escolha o que prefere mexer:</p>
+        </div>
+      )}
+
+      {/* ── MENU: escolher caminho ── */}
+      {step === 'menu' && (
+        <div className="mse-menu">
+          <button type="button" className="mse-path" onClick={() => setStep('lyrics')}>
+            <span className="mse-path-ic">✍️</span>
+            <span className="mse-path-txt"><b>Editar a letra</b><small>Mexer direto no texto da música — ou me diga o que quer mudar</small></span>
+            <span className="mse-path-arrow">›</span>
+          </button>
+          <button type="button" className="mse-path" onClick={() => setStep('data')}>
+            <span className="mse-path-ic">🎚️</span>
+            <span className="mse-path-txt"><b>Mudar os dados</b><small>Nome, história, ritmo, ocasião ou voz — e gerar uma letra nova</small></span>
+            <span className="mse-path-arrow">›</span>
+          </button>
+          <button type="button" className="mse-cancel" onClick={onClose}>Deixa pra depois</button>
+        </div>
+      )}
+
+      {/* ── DADOS: formulário → gerar letra ── */}
+      {step === 'data' && (
+        <div className="mse-form">
+          <label className="mse-lbl">Para quem é a música
+            <input className="mse-input" value={form.honoree_name} onChange={e => setField('honoree_name', e.target.value)} placeholder="Nome do homenageado" />
+          </label>
+          <label className="mse-lbl">A história / o que a música deve contar
+            <textarea className="mse-textarea mse-textarea--sm" value={form.story} onChange={e => setField('story', e.target.value)} placeholder="Conte os detalhes, momentos, o que quer destacar…" rows={4} />
+          </label>
+          <span className="mse-lbl">Ritmo</span>
+          <div className="mse-pills">
+            {MSE_RITMOS.map(r => (
+              <button key={r} type="button" className={`mse-pill ${form.genre === r ? 'is-on' : ''}`} onClick={() => setField('genre', r)}>{r}</button>
+            ))}
+          </div>
+          <span className="mse-lbl">Ocasião</span>
+          <div className="mse-pills">
+            {MSE_OCASIOES.map(o => (
+              <button key={o} type="button" className={`mse-pill ${form.occasion === o ? 'is-on' : ''}`} onClick={() => setField('occasion', o)}>{o}</button>
+            ))}
+          </div>
+          <span className="mse-lbl">Voz</span>
+          <div className="mse-pills">
+            {MSE_VOZES.map(v => (
+              <button key={v} type="button" className={`mse-pill ${form.voice === v ? 'is-on' : ''}`} onClick={() => setField('voice', v)}>{v}</button>
+            ))}
+          </div>
+          <button type="button" className="mse-gen" disabled={genLeft <= 0 || busy} onClick={() => genLyrics('data')}>
+            {busy ? 'Gerando a nova letra…' : genBtnLabel}
+          </button>
+          <p className="mse-count">{genLeft > 0 ? `Você pode gerar uma nova letra mais ${genLeft}×` : 'Você já usou as 3 gerações de letra — pode editar o texto à vontade.'}</p>
+          <button type="button" className="mse-back" onClick={() => setStep('menu')}>‹ Voltar</button>
+        </div>
+      )}
+
+      {/* ── LETRA: textarea editável + instrução livre + confirmar ── */}
+      {step === 'lyrics' && (
+        <div className="mse-form">
+          <span className="mse-lbl">A letra da sua música <small>(edite à vontade)</small></span>
+          <textarea className="mse-textarea" value={lyrics} onChange={e => setLyrics(e.target.value)} rows={12} placeholder={MSE_SAMPLE} />
+
+          {genLeft > 0 && (
+            <div className="mse-instruct">
+              <span className="mse-lbl">💬 Prefere me dizer o que mudar?</span>
+              <textarea className="mse-textarea mse-textarea--sm" value={instruction} onChange={e => setInstruction(e.target.value)} rows={2} placeholder="Ex.: troca o nome pra Miquéias, deixa mais alegre, tira a parte do final…" />
+              <button type="button" className="mse-gen mse-gen--soft" disabled={busy || !instruction.trim()} onClick={() => genLyrics('instruction')}>
+                {busy ? 'Ajustando a letra…' : '🪄 Gerar nova letra com esse ajuste'}
+              </button>
+            </div>
+          )}
+          <p className="mse-count">{genLeft > 0 ? `Você pode gerar uma nova letra mais ${genLeft}×` : 'Você já usou as 3 gerações — pode editar o texto acima à vontade.'}</p>
+
+          <button type="button" className="mse-confirm" disabled={busy || !lyrics.trim()} onClick={() => setStep('confirm')}>
+            ✅ Confirmar e criar minha nova música
+          </button>
+          <button type="button" className="mse-back" onClick={() => setStep('menu')}>‹ Voltar</button>
+        </div>
+      )}
+
+      {/* ── CONFIRM: aviso de ação única ── */}
+      {step === 'confirm' && (
+        <div className="mse-confirmbox">
+          <div className="mse-confirm-ic">🎶</div>
+          <strong>Criar sua nova música?</strong>
+          <p>Vou criar <b>2 versões novas</b>{order.plan === 'completa' ? ' + um vídeo novo com a letra' : ''} a partir dessa letra. Suas <b>2 versões atuais continuam salvas</b> aqui.</p>
+          <p className="mse-warn">⚠️ Esse ajuste é <b>único</b> — depois de criar, não dá pra editar essa música de novo (só criar outra do zero).</p>
+          <button type="button" className="mse-confirm" disabled={busy} onClick={doConfirm}>{busy ? 'Enviando…' : 'Sim, criar minha nova música'}</button>
+          <button type="button" className="mse-back" onClick={() => setStep('lyrics')}>‹ Rever a letra</button>
+        </div>
+      )}
+
+      {/* ── SENDING: música em produção ── */}
+      {step === 'sending' && (
+        <div className="mse-sending">
+          <div className="mse-sending-ic">🎼</div>
+          <strong>Sua nova música está sendo criada!</strong>
+          <p>Fica pronta em <b>5 a 10 minutinhos</b>. Assim que ficar, eu te aviso por <b>e-mail</b> e ela aparece aqui automaticamente — com as 2 versões novas junto das atuais 💛</p>
+          <button type="button" className="mse-confirm" onClick={onClose}>Entendi!</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════════════════════════
    MY ORDERS · Tela "Minhas músicas" pra cliente recorrente.
    Recebe lista de orders já carregada do backend (sem fetch interno
    pra não acoplar) + handlers de navegação. Cada card mostra estado
@@ -1071,6 +1268,11 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
   // refletir atualizações, ex: status vira pago). null = mostrando a lista.
   const [selectedId, setSelectedId] = useState(null)
   const selected = selectedId ? (orders || []).find(o => o.id === selectedId) : null
+  // Editor de auto-ajuste (self-edit) aberto? Guarda o id sendo editado.
+  const [editingId, setEditingId] = useState(null)
+  // Marca local (mock) de que o cliente confirmou a nova música → mostra o
+  // banner "criando" no lugar do botão. No real virá de o.edit_status.
+  const [justSent, setJustSent] = useState({})
 
   // Formata data BR: 03/06/2026 às 13:45
   const fmtDate = (iso) => {
@@ -1092,18 +1294,40 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
     return { label: o.status || 'Em andamento', cls: 'pending', icon: '⏳' }
   }
 
+  // Renderiza uma versão (player + baixar + compartilhar).
+  const renderVersion = (url, key, label, dl) => (
+    <div key={key} className="my-order-version">
+      <span className="my-order-version-label">{label}</span>
+      <MiniPlayer src={url} label={label} />
+      <div className="my-order-actions">
+        <a className="my-order-btn my-order-btn--primary" href={url} download={dl}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Baixar
+        </a>
+        <ShareButton url={url} kind="audio" honoreeName={null} title={label} label="Enviar no WhatsApp" variant="whatsapp" />
+      </div>
+    </div>
+  )
+
   // ── DETALHE de uma música: só aqui aparecem os arquivos pra baixar ──
   const renderDetail = (o) => {
     const st = statusOf(o)
     const safeName = (o.honoree_name || 'musica').toLowerCase().replace(/[^a-z0-9]/g, '-')
-    // As 2 versões (full_audio_urls). Fallback pro original_audio_url (1 versão)
-    // se o pedido for antigo e não tiver o array.
+    // As 2 versões atuais (full_audio_urls). Fallback pro original_audio_url.
     const versions = (Array.isArray(o.full_audio_urls) && o.full_audio_urls.filter(Boolean).length)
       ? o.full_audio_urls.filter(Boolean)
       : (o.original_audio_url ? [o.original_audio_url] : [])
+    // Se o cliente já regenerou (self-edit), prev_audio_urls guarda as ORIGINAIS
+    // e full_audio_urls são as NOVAS → mostramos as 4 juntas.
+    const prev = (Array.isArray(o.prev_audio_urls) ? o.prev_audio_urls.filter(Boolean) : [])
+    const hasEdit = prev.length > 0
+    // Estados do self-edit
+    const regenerating = o.edit_status === 'regenerating' || justSent[o.id]
+    const canEdit = MSE_ENABLED && !!o.paid_at && !o.self_edit_used && !hasEdit && !regenerating
+    const isEditing = editingId === o.id
     return (
       <div className="my-order-detail">
-        <button type="button" className="my-order-detail-back" onClick={() => setSelectedId(null)}>
+        <button type="button" className="my-order-detail-back" onClick={() => { setSelectedId(null); setEditingId(null) }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
           Voltar para minhas músicas
         </button>
@@ -1115,19 +1339,10 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
 
         {o.paid_at ? (
           <>
-            {versions.map((url, i) => (
-              <div key={i} className="my-order-version">
-                <span className="my-order-version-label">Versão {i + 1}</span>
-                <MiniPlayer src={url} label={`Versão ${i + 1}`} />
-                <div className="my-order-actions">
-                  <a className="my-order-btn my-order-btn--primary" href={url} download={`lembrancacantada-${safeName}-v${i + 1}.mp3`}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    Baixar versão {i + 1}
-                  </a>
-                  <ShareButton url={url} kind="audio" honoreeName={o.honoree_name} title={`Para ${o.honoree_name || 'você'}`} label={`Enviar versão ${i + 1} no WhatsApp`} variant="whatsapp" />
-                </div>
-              </div>
-            ))}
+            {hasEdit && <div className="my-order-vgroup">🎵 Versões originais</div>}
+            {prev.map((url, i) => renderVersion(url, `p${i}`, hasEdit ? `Original ${i + 1}` : `Versão ${i + 1}`, `lembrancacantada-${safeName}-original-v${i + 1}.mp3`))}
+            {hasEdit && <div className="my-order-vgroup my-order-vgroup--new">✨ Suas versões novas</div>}
+            {versions.map((url, i) => renderVersion(url, `n${i}`, hasEdit ? `Nova ${i + 1}` : `Versão ${i + 1}`, `lembrancacantada-${safeName}-v${i + 1}.mp3`))}
             {o.video_brinde_url && (
               <div className="my-order-version">
                 <span className="my-order-version-label">🎬 Vídeo com a letra</span>
@@ -1140,6 +1355,27 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
                 </div>
               </div>
             )}
+
+            {/* ── SELF-EDIT: ajustar a própria música (1x) ── */}
+            {isEditing ? (
+              <MusicSelfEdit
+                order={o}
+                onClose={() => setEditingId(null)}
+                onConfirmed={() => setJustSent(s => ({ ...s, [o.id]: true }))}
+              />
+            ) : regenerating ? (
+              <div className="my-order-regen">
+                <div className="my-order-regen-ic">🎼</div>
+                <strong>Sua nova música está sendo criada</strong>
+                <p>Fica pronta em 5 a 10 minutinhos. A gente te avisa por e-mail e ela aparece aqui automaticamente 💛</p>
+              </div>
+            ) : hasEdit || o.self_edit_used ? (
+              <p className="my-order-edit-done">✓ Você já criou sua versão nova dessa música. Pra outra, é só criar uma nova do zero 💛</p>
+            ) : canEdit ? (
+              <button type="button" className="my-order-edit-btn" onClick={() => setEditingId(o.id)}>
+                ✏️ Quero ajustar minha música
+              </button>
+            ) : null}
           </>
         ) : (
           <div className="my-order-version">
