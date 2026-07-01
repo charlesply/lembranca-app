@@ -16,6 +16,7 @@ import App from '../../App.jsx'
 import { DeliveryPage } from '../../features/Delivery'
 import { PaymentPage } from '../../features/Payment'
 import { PromoPage } from '../../features/Promo'
+import PedidosPage from '../../features/Pedidos/PedidosPage.jsx' // /pedidos — acessar minha música (lookup)
 import SupportChat from '../../features/Support/SupportChat.jsx' // Chat do site — suporte PRIMÁRIO (WhatsApp indisponível, 30/jun)
 
 export default function AppRouter() {
@@ -25,6 +26,7 @@ export default function AppRouter() {
         <Route path="/p/:id" element={<DeliveryPage />} />
         <Route path="/finalizar/:id" element={<PaymentPage />} />
         <Route path="/promo/:id" element={<PromoPage />} />
+        <Route path="/pedidos" element={<PedidosPage />} />
         {/* Catch-all: tudo o resto cai no App (inclui /admin, query params, etc.) */}
         <Route path="*" element={<App />} />
       </Routes>
