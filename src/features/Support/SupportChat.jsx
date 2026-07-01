@@ -256,6 +256,30 @@ export default function SupportChat() {
             })}
             {busy && <div style={{ alignSelf: 'flex-start', color: '#a8a29e', fontSize: 13, padding: '2px 6px' }}>Bia está digitando…</div>}
 
+            {/* Botão "Minhas músicas": aparece após o bot achar/entregar um pedido
+                (msg com /p/ ou /finalizar/) → leva pra TODAS as músicas da cliente,
+                pois às vezes ela tem mais de um pedido. */}
+            {(() => {
+              if (busy) return null
+              const lastOut = [...msgs].reverse().find(m => m.role === 'out')
+              if (!lastOut || !/\/(p|finalizar)\//.test(String(lastOut.body || ''))) return null
+              // usa o link ?tel= que o bot mandou; senão monta com o telefone digitado
+              const fromBot = String(lastOut.body || '').match(/https?:\/\/[^\s]*[?&]tel=(\d+)/)
+              let tel = fromBot ? fromBot[1] : ''
+              if (!tel) {
+                const lastPhone = [...msgs].reverse().find(m => m.role === 'in' && String(m.body || '').replace(/\D/g, '').length >= 10)
+                tel = lastPhone ? String(lastPhone.body).replace(/\D/g, '') : ''
+              }
+              if (!tel) return null
+              return (
+                <button onClick={() => { window.location.href = `/?tel=${tel}` }}
+                  style={{ width: '100%', marginTop: 4, padding: '11px 14px', borderRadius: 14, cursor: 'pointer',
+                    background: '#fff', color: P_DARK, border: `1.5px solid ${P}`, fontFamily: 'inherit', fontSize: 14, fontWeight: 700 }}>
+                  🎵 Ver todas as minhas músicas
+                </button>
+              )
+            })()}
+
             {/* 2 botões de entrada — só na home/geral, antes do cliente escolher */}
             {!chose && !orderId && !busy && msgs.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4, alignSelf: 'stretch' }}>

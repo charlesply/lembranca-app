@@ -1938,6 +1938,30 @@ export default function App() {
     deliverInChat(orderId, tx, slug)
   }, [])
 
+  // ── Deep-link "Minhas músicas": ?tel=XXXX (ou ?phone=) abre direto a lista de
+  // TODAS as músicas da cliente. Usado pelo botão do chat de suporte pra ela ver
+  // outros pedidos (às vezes pagou por mais de um). ──
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const tel = params.get('tel') || params.get('phone')
+    if (!tel) return
+    const digits = String(tel).replace(/\D/g, '')
+    if (digits.length < 10) return
+    window.history.replaceState({}, '', window.location.pathname)
+    ;(async () => {
+      try {
+        const r = await apiOrderLookup(digits)
+        const orders = (r && r.orders) || []
+        setCustomer({ phone: digits, name: orders[0]?.customer_name || '' })
+        setCustomerOrders(orders)
+        setShowCustomerBanner(true)
+        setView('my-orders')
+        window.scrollTo({ top: 0 })
+      } catch (_) {}
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const retryPayVerify = () => {
     if (!payReturn || !payReturn.orderId) return
     setPayReturn({ ...payReturn, status: 'verifying' })
