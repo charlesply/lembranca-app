@@ -13,6 +13,9 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { fetchOrderStatus, createPix } from './api/paymentService'
 import { usePixPolling } from './hooks/usePixPolling'
+// Self-edit: cliente ajusta a própria prévia (1×) antes de pagar — mesmo componente
+// usado em Minhas Músicas / DeliveryPage.
+import { MusicSelfEdit, MSE_ENABLED } from '../../components/MusicSelfEdit'
 
 // Ordem importa: o primeiro fica em cima na UI. Completa e o destaque (badge
 // "Mais escolhido") e o default pre-selecionado.
@@ -43,6 +46,9 @@ export default function PaymentPage() {
   const [loadingPix, setLoadingPix] = useState(false)
   const [copied, setCopied] = useState(false)
   const [confirming, setConfirming] = useState(false)
+  // Self-edit da prévia (1×): editor aberto? / cliente acabou de confirmar?
+  const [editing, setEditing] = useState(false)
+  const [justSent, setJustSent] = useState(false)
 
   // 1) Carrega dados da order
   useEffect(() => {
@@ -78,6 +84,28 @@ export default function PaymentPage() {
     },
   })
 
+  // 3) Enquanto a nova prévia está sendo criada (self-edit), polla o /status a
+  //    cada 15s e mescla — quando fica pronta (edit_status='done' + preview novo),
+  //    o editor some sozinho e a prévia nova aparece pra pagar. Sem F5.
+  const editStatus = order?.edit_status
+  useEffect(() => {
+    if (!id || !order) return
+    const regen = editStatus === 'regenerating' || (justSent && !['done', 'error'].includes(editStatus))
+    if (!regen) return
+    let alive = true
+    const tick = async () => {
+      try {
+        const d = await fetchOrderStatus(id)
+        if (!alive || !d || d.error) return
+        // Se pagou no meio, o usePixPolling/redirect cuidam; aqui só mescla dados.
+        setOrder(prev => ({ ...(prev || {}), ...d }))
+      } catch (_) {}
+    }
+    const iv = setInterval(tick, 15000)
+    tick()
+    return () => { alive = false; clearInterval(iv) }
+  }, [id, editStatus, justSent, order?.preview_audio_url])
+
   const generatePix = useCallback(async () => {
     if (!id) return
     setLoadingPix(true); setPix(null); setCopied(false)
@@ -111,6 +139,14 @@ export default function PaymentPage() {
   const honoree = order.honoree_name || 'sua pessoa especial'
   const preview = order.preview_audio_url
 
+  // ── Self-edit da prévia (1×) ──
+  const regenerating = order.edit_status === 'regenerating' || (justSent && !['done', 'error'].includes(order.edit_status))
+  const editErr = order.edit_status === 'error'
+  // Pode ajustar quem tem prévia, ainda não usou o self-edit e não está em regeneração.
+  const canEdit = MSE_ENABLED && !!preview && !order.self_edit_used && !regenerating && !editErr && !pix && !confirming
+  // Enquanto edita/regenera, esconde os planos pra focar no ajuste.
+  const showPlans = !pix && !confirming && !editing && !regenerating
+
   return (
     <Shell>
       <div className="pp-card">
@@ -121,15 +157,42 @@ export default function PaymentPage() {
           Finalize aqui pra liberar a versão completa em alta qualidade.
         </p>
 
-        {preview && (
+        {preview && !editing && (
           <section className="pp-section">
-            <h2>🎧 Sua prévia</h2>
+            <h2>🎧 {order.self_edit_used ? 'Sua prévia nova' : 'Sua prévia'}</h2>
             <audio controls preload="metadata" src={preview} style={{ width: '100%' }} />
             <p className="pp-hint">A versão final é mais longa, em alta qualidade e sem marca d'água.</p>
           </section>
         )}
 
-        {!pix && !confirming && (
+        {/* ── Ajustar a prévia (1×, sem custo) ── */}
+        {editing ? (
+          <section className="pp-section">
+            <MusicSelfEdit
+              order={order}
+              onClose={() => setEditing(false)}
+              onConfirmed={() => { setJustSent(true); setEditing(false) }}
+            />
+          </section>
+        ) : regenerating ? (
+          <section className="pp-section">
+            <div className="pp-editregen">
+              <div className="pp-editregen-ic">🎼</div>
+              <strong>Sua nova prévia está sendo criada</strong>
+              <p>Fica pronta em 5 a 10 minutinhos e aparece aqui automaticamente. Aí é só finalizar o pagamento 💛</p>
+            </div>
+          </section>
+        ) : editErr ? (
+          <p className="pp-hint" style={{ textAlign: 'center', color: '#b04a30' }}>
+            Tivemos um probleminha pra criar sua nova prévia — pode seguir com a atual que a equipe te ajuda 💛
+          </p>
+        ) : canEdit ? (
+          <button type="button" className="pp-btn pp-btn-ghost pp-editbtn" onClick={() => setEditing(true)}>
+            ✏️ Quero ajustar minha prévia antes de pagar
+          </button>
+        ) : null}
+
+        {showPlans && (
           <section className="pp-section">
             <h2>📦 Escolha seu pacote</h2>
             <div className="pp-plans">
@@ -279,6 +342,11 @@ function Shell({ children }) {
         .pp-steps { margin: 14px 0 0; padding: 0 0 0 20px; font-size: 14px; color: #5a4434; line-height: 1.7; }
         .pp-steps li { margin-bottom: 4px; }
         .pp-check { font-size: 56px; text-align: center; margin: 4px 0 8px; }
+        .pp-editbtn { margin: 4px 0 8px; }
+        .pp-editregen { text-align: center; padding: 20px 16px; background: #fff8ef; border: 1px solid #f7e4cf; border-radius: 14px; }
+        .pp-editregen-ic { font-size: 40px; margin-bottom: 6px; }
+        .pp-editregen strong { display: block; font-size: 16px; color: #2b1d14; margin-bottom: 6px; }
+        .pp-editregen p { font-size: 14px; color: #7a6354; line-height: 1.5; margin: 0; }
         .pp-loading, .pp-err {
           text-align: center; padding: 80px 24px; color: #7a6354; font-size: 16px;
         }
