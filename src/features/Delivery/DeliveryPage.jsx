@@ -85,6 +85,22 @@ export default function DeliveryPage() {
     return () => clearInterval(t)
   }, [id, data?.paid_at, data?.plan, data?.video_brinde_url])
 
+  // Auto-update do self-edit: enquanto a nova música é criada
+  // (edit_status='regenerating'), polla até virar 'done' e mostra as novas.
+  useEffect(() => {
+    if (!data || !id || data.edit_status !== 'regenerating') return
+    let ticks = 0
+    const t = setInterval(async () => {
+      ticks++
+      try {
+        const o = await fetchOrderStatus(id)
+        if (o && o.edit_status && o.edit_status !== 'regenerating') { setData(o); clearInterval(t); return }
+      } catch (_) {}
+      if (ticks >= 80) clearInterval(t) // 80 x 15s = 20 min
+    }, 15000)
+    return () => clearInterval(t)
+  }, [id, data?.edit_status])
+
   const videoPoster = useVideoPoster(data?.video_brinde_url)
 
   async function handleShare(key, url, filename, mimeType, label) {
@@ -121,9 +137,21 @@ export default function DeliveryPage() {
   if (err) return <Shell><div className="dp-err">{err}</div></Shell>
   if (!data) return <Shell><div className="dp-loading">Carregando sua música…</div></Shell>
 
-  let audios = Array.isArray(data.full_audio_urls) ? data.full_audio_urls.filter(Boolean) : []
-  if (!audios.length && data.original_audio_url) audios = [data.original_audio_url]
-  if (!audios.length && data.preview_audio_url) audios = [data.preview_audio_url]
+  let newAudios = Array.isArray(data.full_audio_urls) ? data.full_audio_urls.filter(Boolean) : []
+  if (!newAudios.length && data.original_audio_url) newAudios = [data.original_audio_url]
+  if (!newAudios.length && data.preview_audio_url) newAudios = [data.preview_audio_url]
+  // Se o cliente ajustou a música (self-edit), prev_audio_urls guarda as 2
+  // ORIGINAIS e full_audio_urls as 2 NOVAS → mostramos as 4, rotuladas.
+  const prevAudios = Array.isArray(data.prev_audio_urls) ? data.prev_audio_urls.filter(Boolean) : []
+  // Só rotula "originais vs novas" quando a nova música já ficou pronta — durante
+  // a regeneração o full_audio_urls ainda é o antigo (evita mostrar 2x igual).
+  const regenerating = data.edit_status === 'regenerating'
+  const hasEdit = prevAudios.length > 0 && !regenerating
+  const audios = hasEdit
+    ? [...prevAudios.map((url, i) => ({ url, grp: 'Original', n: i + 1 })),
+       ...newAudios.map((url, i) => ({ url, grp: 'Nova', n: i + 1 }))]
+    : newAudios.map((url, i) => ({ url, grp: '', n: i + 1 }))
+  const multi = audios.length > 1
 
   const video = data.video_brinde_url
   const honoree = data.honoree_name || 'você'
@@ -138,14 +166,21 @@ export default function DeliveryPage() {
           {paid ? 'Pagamento confirmado — aproveite!' : 'Aqui está sua prévia.'}
         </p>
 
-        {audios.map((url, i) => {
-          const filename = safeFilename(honoree, 'mp3', audios.length > 1 ? `v${i+1}` : '')
-          const label = `🎵 Música para ${honoree}${audios.length > 1 ? ' (Versão ' + (i+1) + ')' : ''}`
+        {regenerating && (
+          <div className="dp-regen">🎼 <b>Sua nova música está sendo criada</b> — fica pronta em 5 a 10 minutinhos e aparece aqui sozinha. Enquanto isso, suas versões atuais continuam abaixo 💛</div>
+        )}
+
+        {audios.map((a, i) => {
+          const url = a.url
+          const vtag = a.grp ? `${a.grp === 'Original' ? 'original' : 'nova'}-v${a.n}` : (multi ? `v${a.n}` : '')
+          const filename = safeFilename(honoree, 'mp3', vtag)
+          const heading = a.grp ? `${a.grp === 'Original' ? '🎵 Versão original' : '✨ Versão nova'} ${a.n}` : `🎧 Música ${multi ? `— Versão ${a.n}` : ''}`
+          const label = `🎵 Música para ${honoree}${a.grp ? ' (' + a.grp + ' ' + a.n + ')' : (multi ? ' (Versão ' + a.n + ')' : '')}`
           const key = `audio-${i}`
           const st = shareState[key] || {}
           return (
-            <section key={url} className="dp-section">
-              <h2>🎧 Música {audios.length > 1 ? `— Versão ${i + 1}` : ''}</h2>
+            <section key={url + i} className="dp-section">
+              <h2>{heading}</h2>
               <audio controls preload="metadata" src={url} style={{ width: '100%' }} />
               <div className="dp-btn-row">
                 <a className="dp-btn dp-btn-primary" href={url} download={filename}>
@@ -260,6 +295,7 @@ function Shell({ children }) {
         .dp-title { font-size: 26px; margin: 0 0 8px; text-align: center; font-weight: 700; line-height: 1.25; }
         .dp-title span { color: #CC785C; }
         .dp-subtitle { text-align: center; color: #7a6354; margin: 0 0 28px; font-size: 15px; }
+        .dp-regen { background: #fff5ee; border: 1px solid #f3d9c7; color: #7a5334; border-radius: 14px; padding: 14px 16px; margin: 0 0 24px; font-size: 14px; line-height: 1.5; text-align: center; }
         .dp-section { margin: 24px 0; padding: 20px; background: #fdfaf6; border-radius: 14px; border: 1px solid #f6ede2; }
         .dp-section h2 { font-size: 16px; margin: 0 0 12px; font-weight: 600; color: #2b1d14; }
         .dp-btn-row {

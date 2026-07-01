@@ -1068,16 +1068,9 @@ function ShareButton({ url, kind = 'audio', honoreeName, label = 'Enviar no What
    DADOS (nome, história, ritmo, ocasião, voz) e gerar letra deles.
    ⚠️ MOCK: gerar-letra e confirmar estão SIMULADOS (backend a ligar).
    ══════════════════════════════════════════════════════════════ */
-// 🧪 Enquanto for MOCK (backend não ligado), o editor só aparece com o flag
-// ?selfedit=1 (fica salvo no navegador) — cliente real NÃO vê. Ao ligar o
-// backend de verdade, trocar por `true`.
-const MSE_ENABLED = (() => {
-  try {
-    const has = new URLSearchParams(location.search).has('selfedit')
-    if (has) localStorage.setItem('lc_selfedit', '1')
-    return has || localStorage.getItem('lc_selfedit') === '1'
-  } catch { return false }
-})()
+// Feature de auto-edição LIGADA pra todo cliente pago. (Kill-switch: trocar
+// por `false` desliga o botão em todo lugar.)
+const MSE_ENABLED = true
 const MSE_MAX_GENS = 3
 // Primeiros 8 aparecem de cara; o resto fica atrás do "Ver mais".
 const MSE_RITMOS = [
@@ -1090,22 +1083,16 @@ const MSE_VOZES = ['Feminina', 'Masculina']
 const MSE_SAMPLE = 'Aqui vai aparecer a letra da sua música\npra você ajustar do jeitinho que quiser…'
 // voice_preference ("Masculino"/"Feminino") → rótulo da pill ("Masculina"/"Feminina")
 const mseVoiceLabel = (v) => { const s = String(v || '').toLowerCase(); return s.startsWith('masc') ? 'Masculina' : s.startsWith('fem') ? 'Feminina' : '' }
-// MOCK: aplica uma instrução simples ("troca X para Y") na letra — só pra dar
-// realismo à prévia. No backend, quem faz isso de verdade é o GPT.
-const mseMockApply = (text, instr) => {
-  const m = String(instr).match(/troc\w*\s+(?:o\s+)?(?:nome\s+)?(?:de\s+|da\s+|do\s+)?([\p{L}]{2,})\s+(?:para|pra|por)\s+([\p{L}]{2,})/iu)
-  if (m) { try { return text.replace(new RegExp(m[1], 'giu'), m[2]) } catch { return text } }
-  return text
-}
 
 function MusicSelfEdit({ order, onClose, onConfirmed }) {
   // passo: 'menu' | 'data' | 'lyrics' | 'confirm' | 'sending'
   const [step, setStep] = useState('menu')
   const [lyrics, setLyrics] = useState(order.final_lyrics || '')
-  const [genLeft, setGenLeft] = useState(MSE_MAX_GENS)
+  const [genLeft, setGenLeft] = useState(Math.max(0, MSE_MAX_GENS - (Number(order.lyric_regen_count) || 0)))
   const [busy, setBusy] = useState(false)
   const [instruction, setInstruction] = useState('')
   const [lyricNote, setLyricNote] = useState('')   // aviso ACIMA da textarea (nunca dentro da letra → não vai pro Suno)
+  const [err, setErr] = useState('')
   const [showMoreRitmos, setShowMoreRitmos] = useState(false)
   const [form, setForm] = useState({
     honoree_name: order.honoree_name || '',
@@ -1123,6 +1110,7 @@ function MusicSelfEdit({ order, onClose, onConfirmed }) {
     fetch(`${API_URL}/api/order/${order.id}/status`).then(r => r.json()).then(d => {
       if (!alive || !d) return
       if (d.final_lyrics) setLyrics(prev => prev || d.final_lyrics)
+      if (typeof d.lyric_regen_count === 'number') setGenLeft(Math.max(0, MSE_MAX_GENS - d.lyric_regen_count))
       setForm(f => ({
         honoree_name: f.honoree_name || d.honoree_name || '',
         story: f.story || d.story || '',
@@ -1139,53 +1127,64 @@ function MusicSelfEdit({ order, onClose, onConfirmed }) {
   const ritmoList = form.genre && !MSE_RITMOS.includes(form.genre) ? [form.genre, ...MSE_RITMOS] : MSE_RITMOS
   const ritmosShown = showMoreRitmos ? ritmoList : ritmoList.slice(0, MSE_RITMOS_CORE)
 
-  // MOCK da geração de letra — o backend fará via GPT (generateLyricsWithGPT
-  // no modo 'dados', ou aplicando a instrução livre na letra atual). ⚠️ O aviso
-  // "✨…" fica FORA da textarea — a letra em si nunca é poluída (nada disso vai
-  // pro SUNOAPI).
+  // Geração de letra via backend (GPT). Modo 'data' = a partir dos campos;
+  // 'instruction' = aplica o texto livre na letra atual. O aviso "✨…" fica FORA
+  // da textarea — a letra nunca é poluída (nada disso vai pro Suno).
   const genLyrics = async (mode) => {
     if (genLeft <= 0 || busy) return
     if (mode === 'instruction' && !instruction.trim()) return
-    setBusy(true)
-    await new Promise(r => setTimeout(r, 1100))
-    if (mode === 'instruction') {
-      const instr = instruction.trim()
-      setLyrics(prev => mseMockApply(prev || MSE_SAMPLE, instr))
-      setLyricNote(`✨ Letra ajustada com: "${instr}"`)
-    } else {
-      if (!lyrics) setLyrics(MSE_SAMPLE)
-      setLyricNote(`✨ Nova letra gerada dos seus dados${form.genre ? ' · ' + form.genre : ''}`)
-    }
-    setGenLeft(n => n - 1)
-    setInstruction('')
+    setBusy(true); setErr('')
+    try {
+      const body = mode === 'instruction'
+        ? { mode: 'instruction', instruction: instruction.trim(), currentLyrics: lyrics }
+        : { mode: 'data', fields: { honoree_name: form.honoree_name, story: form.story, genre: form.genre, occasion: form.occasion, voice: form.voice } }
+      const r = await fetch(`${API_URL}/api/order/${order.id}/edit/lyrics`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      }).then(x => x.json())
+      if (!r || !r.ok) {
+        if (r && r.error === 'limit_reached') { setGenLeft(0); setErr('Você já usou as 3 gerações de letra. Pode editar o texto à vontade e confirmar 💛') }
+        else if (r && r.error === 'already_used') setErr('Você já criou sua nova música desse pedido.')
+        else setErr((r && r.message) || 'Não consegui gerar a letra agora. Tenta de novo em instantes.')
+        setBusy(false); return
+      }
+      setLyrics(r.lyrics || '')
+      setLyricNote(mode === 'instruction' ? `✨ Letra ajustada com: "${instruction.trim()}"` : `✨ Nova letra gerada dos seus dados${form.genre ? ' · ' + form.genre : ''}`)
+      if (typeof r.remaining === 'number') setGenLeft(r.remaining)
+      setInstruction('')
+      setStep('lyrics')
+    } catch { setErr('Sem conexão agora. Tenta de novo em instantes.') }
     setBusy(false)
-    setStep('lyrics')
   }
 
   const doConfirm = async () => {
     if (busy) return
-    setBusy(true)
-    // MOCK: o backend vai (1) snapshot das 2 versões atuais, (2) marcar
-    // self_edit_used, (3) disparar a Inngest de regeneração + e-mail.
-    await new Promise(r => setTimeout(r, 1000))
+    setBusy(true); setErr('')
+    try {
+      const r = await fetch(`${API_URL}/api/order/${order.id}/edit/confirm`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lyrics, fields: { honoree_name: form.honoree_name, story: form.story, genre: form.genre, occasion: form.occasion, voice: form.voice } }),
+      }).then(x => x.json())
+      if (!r || !r.ok) {
+        setErr((r && r.message) || 'Não consegui iniciar a criação agora. Tenta de novo.')
+        setBusy(false); return
+      }
+      setStep('sending')
+      onConfirmed && onConfirmed()
+    } catch { setErr('Sem conexão agora. Tenta de novo.'); setBusy(false); return }
     setBusy(false)
-    setStep('sending')
-    onConfirmed && onConfirmed()
   }
 
   const genBtnLabel = genLeft > 0 ? `🪄 Gerar nova letra` : 'Limite de letras atingido'
 
   return (
     <div className="mse">
-      {/* MOCK banner — remover ao ligar no backend */}
-      <div className="mse-mock">🧪 Prévia do fluxo (mock) — gerar letra e confirmar estão simulados</div>
-
       {step !== 'sending' && (
         <div className="mse-head">
           <strong>Ajustar a música do {order.honoree_name || 'seu homenageado'}</strong>
           <p>Você pode ajustar sua música <b>uma vez</b>, sem custo 💛 Escolha o que prefere mexer:</p>
         </div>
       )}
+      {err && <div className="mse-err">{err}</div>}
 
       {/* ── MENU: escolher caminho ── */}
       {step === 'menu' && (
@@ -1305,9 +1304,36 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
   const selected = selectedId ? (orders || []).find(o => o.id === selectedId) : null
   // Editor de auto-ajuste (self-edit) aberto? Guarda o id sendo editado.
   const [editingId, setEditingId] = useState(null)
-  // Marca local (mock) de que o cliente confirmou a nova música → mostra o
-  // banner "criando" no lugar do botão. No real virá de o.edit_status.
+  // Marca local de que o cliente confirmou a nova música → banner "criando"
+  // imediato (antes do 1º poll trazer edit_status='regenerating').
   const [justSent, setJustSent] = useState({})
+  // Overrides do /status por id (auto-update sem F5 enquanto regenera).
+  const [overrides, setOverrides] = useState({})
+  const withOverride = (o) => (o && overrides[o.id]) ? { ...o, ...overrides[o.id] } : o
+
+  // Auto-update sem F5: enquanto a música nova está sendo criada
+  // (edit_status='regenerating'), polla o /status a cada 15s e mescla — quando
+  // vira 'done', as versões novas aparecem sozinhas e o poll para.
+  useEffect(() => {
+    if (!selectedId) return
+    const base = (orders || []).find(o => o.id === selectedId)
+    if (!base) return
+    const cur = { ...base, ...(overrides[selectedId] || {}) }
+    const active = cur.edit_status === 'regenerating' || (justSent[selectedId] && !['done', 'error'].includes(cur.edit_status))
+    if (!active) return
+    let alive = true
+    const tick = async () => {
+      try {
+        const d = await fetch(`${API_URL}/api/order/${selectedId}/status`).then(r => r.json())
+        if (!alive || !d || d.error) return
+        setOverrides(prev => ({ ...prev, [selectedId]: { ...(prev[selectedId] || {}), ...d } }))
+      } catch (_) {}
+    }
+    const iv = setInterval(tick, 15000)
+    tick()
+    return () => { alive = false; clearInterval(iv) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, justSent, overrides[selectedId] && overrides[selectedId].edit_status])
 
   // Formata data BR: 03/06/2026 às 13:45
   const fmtDate = (iso) => {
@@ -1356,9 +1382,10 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
     // e full_audio_urls são as NOVAS → mostramos as 4 juntas.
     const prev = (Array.isArray(o.prev_audio_urls) ? o.prev_audio_urls.filter(Boolean) : [])
     const hasEdit = prev.length > 0
+    const editErr = o.edit_status === 'error'
     // Estados do self-edit
-    const regenerating = o.edit_status === 'regenerating' || justSent[o.id]
-    const canEdit = MSE_ENABLED && !!o.paid_at && !o.self_edit_used && !hasEdit && !regenerating
+    const regenerating = o.edit_status === 'regenerating' || (justSent[o.id] && !['done', 'error'].includes(o.edit_status))
+    const canEdit = MSE_ENABLED && !!o.paid_at && !o.self_edit_used && !hasEdit && !regenerating && !editErr
     const isEditing = editingId === o.id
     return (
       <div className="my-order-detail">
@@ -1404,6 +1431,8 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
                 <strong>Sua nova música está sendo criada</strong>
                 <p>Fica pronta em 5 a 10 minutinhos. A gente te avisa por e-mail e ela aparece aqui automaticamente 💛</p>
               </div>
+            ) : editErr ? (
+              <p className="my-order-edit-done my-order-edit-err">Tivemos um probleminha pra criar sua nova música — a nossa equipe já foi avisada e vai resolver pra você 💛</p>
             ) : hasEdit || o.self_edit_used ? (
               <p className="my-order-edit-done">✓ Você já criou sua versão nova dessa música. Pra outra, é só criar uma nova do zero 💛</p>
             ) : canEdit ? (
@@ -1453,7 +1482,7 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
           <button className="btn-primary" onClick={onNew}>Criar minha primeira música</button>
         </div>
       ) : selected ? (
-        renderDetail(selected)
+        renderDetail(withOverride(selected))
       ) : (
         <>
           <div className="my-orders-list">
