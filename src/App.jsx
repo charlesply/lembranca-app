@@ -3179,6 +3179,7 @@ export default function App() {
   // links com {label, href, external} — external abre em nova aba
   const footerCols = [
     { title: 'Produto', links: [
+      { label: 'Minhas músicas', action: 'myOrders' },
       { label: 'Como funciona', href: '#how' },
       { label: 'Exemplos',      href: '#examples' },
       { label: 'Preços',        href: '#pricing' },
@@ -4199,10 +4200,16 @@ export default function App() {
               <div key={col.title} className="footer-col">
                 <div className="footer-col-title">{col.title}</div>
                 {col.links.map(l => (
-                  <a key={l.label} href={l.href} className="footer-link"
-                    {...(l.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
-                    {l.label}
-                  </a>
+                  l.action === 'myOrders' ? (
+                    <button key={l.label} type="button" className="footer-link footer-link--btn" onClick={openMyOrders}>
+                      {l.label}
+                    </button>
+                  ) : (
+                    <a key={l.label} href={l.href} className="footer-link"
+                      {...(l.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
+                      {l.label}
+                    </a>
+                  )
                 ))}
               </div>
             ))}

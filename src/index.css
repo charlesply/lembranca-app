@@ -416,6 +416,10 @@ body {
 .bia-fab-info { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.2; }
 .bia-fab-name { font-size: 15px; font-weight: 700; color: var(--via-text-primary); }
 .bia-fab-status { font-size: 11.5px; color: #1F8A5B; font-weight: 600; }
+/* 30/jun: suporte primário virou o CHAT DO SITE (WhatsApp indisponível). O FAB do
+   WhatsApp fica oculto pra não duplicar o botão flutuante do SupportChat. Pra
+   reverter pro WhatsApp: remover esta regra + comentar <SupportChat/> no router. */
+.bia-fab { display: none !important; }
 [data-theme="dark"] .bia-fab-status { color: #4ed99a; }
 @media (max-width: 480px) { .bia-fab { bottom: 16px; right: 14px; padding: 7px 15px 7px 7px; } .bia-fab-avatar { width: 42px; height: 42px; } }
 
@@ -1003,6 +1007,8 @@ body {
 .footer-col-title { font-size: 14px; font-weight: 700; color: var(--text-dark); margin-bottom: 14px; }
 .footer-link { display: block; font-size: 14px; color: var(--text-muted); text-decoration: none; margin-bottom: 10px; transition: color .2s; }
 .footer-link:hover { color: var(--purple-btn); }
+/* "Minhas músicas" no footer é <button> (abre o modal), mas parece link */
+.footer-link--btn { background: none; border: none; padding: 0; text-align: left; cursor: pointer; font-family: inherit; }
 .footer-bottom { display: flex; flex-direction: column; gap: 8px; align-items: center; text-align: center; border-top: 1px solid var(--border-light); padding-top: 22px; }
 .footer-text { font-size: 13px; color: var(--text-muted); }
 .footer-pay { font-size: 13px; color: var(--text-small-muted); }

@@ -60,6 +60,9 @@ export default function SupportChat() {
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [greeted, setGreeted] = useState(false)
+  // Cliente já escolheu uma das 2 opções de entrada ("Tenho um pedido" / "Quero
+  // saber mais")? Persiste na sessão pra não re-mostrar os botões.
+  const [chose, setChose] = useState(() => { try { return sessionStorage.getItem('lc_chat_chose') === '1' } catch { return false } })
   const scroller = useRef(null)
   const lastOutAt = useRef(null)
 
@@ -115,14 +118,29 @@ export default function SupportChat() {
     if (el) el.scrollTop = el.scrollHeight
   }, [msgs, open])
 
-  // Saudação contextual ao abrir pela 1ª vez (text vazio → bot responde pelo estado).
+  // Saudação ao abrir pela 1ª vez.
+  //  • Página de pedido (/p, /finalizar, /promo) → bot responde direto sobre o pedido.
+  //  • Home/geral → saudação + 2 botões de entrada ("Tenho um pedido" / "Quero saber
+  //    mais"); só chama o bot quando o cliente escolhe ou digita.
   useEffect(() => {
     if (!open || greeted) return
     setGreeted(true)
     if (msgs.length) return // já tem histórico → não re-cumprimenta
-    sendRaw('')
+    if (orderId) { sendRaw(''); return }
+    push({ role: 'out', author: 'bia', created_at: new Date().toISOString(),
+      body: 'Oi! 💛 Sou a Bia, da Lembrança Cantada 🎶 Como posso te ajudar hoje?' })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
+
+  // Dispara a intenção de um dos 2 botões: mostra um balão bonito do cliente e
+  // manda o sentinel pro bot (que abre o fluxo de pedido ou o chat aberto).
+  const pickIntent = useCallback((label, sentinel) => {
+    setChose(true)
+    try { sessionStorage.setItem('lc_chat_chose', '1') } catch (_) {}
+    push({ role: 'in', body: label, created_at: new Date().toISOString() })
+    sendRaw(sentinel)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [push])
 
   // Polling de respostas do vendedor (CRM) enquanto aberto.
   useEffect(() => {
@@ -237,6 +255,24 @@ export default function SupportChat() {
               )
             })}
             {busy && <div style={{ alignSelf: 'flex-start', color: '#a8a29e', fontSize: 13, padding: '2px 6px' }}>Bia está digitando…</div>}
+
+            {/* 2 botões de entrada — só na home/geral, antes do cliente escolher */}
+            {!chose && !orderId && !busy && msgs.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4, alignSelf: 'stretch' }}>
+                <button onClick={() => pickIntent('Tenho um pedido 📦', '__INTENT_ORDER__')}
+                  style={{ width: '100%', padding: '12px 14px', borderRadius: 14, border: 'none', cursor: 'pointer',
+                    background: `linear-gradient(135deg, ${P} 0%, ${P_DARK} 100%)`, color: '#fff', fontFamily: 'inherit',
+                    fontSize: 14, fontWeight: 700, boxShadow: '0 4px 14px -4px rgba(0,0,0,.35)' }}>
+                  📦 Tenho um pedido
+                </button>
+                <button onClick={() => pickIntent('Quero saber mais ✨', '__INTENT_INFO__')}
+                  style={{ width: '100%', padding: '12px 14px', borderRadius: 14, cursor: 'pointer',
+                    background: '#fff', color: P_DARK, border: `1.5px solid ${P}`, fontFamily: 'inherit',
+                    fontSize: 14, fontWeight: 700 }}>
+                  ✨ Quero saber mais
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Composer */}
