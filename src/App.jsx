@@ -1327,8 +1327,8 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
     if (!base) return
     const cur = { ...base, ...(overrides[selectedId] || {}) }
     const regen = cur.edit_status === 'regenerating' || (justSent[selectedId] && !['done', 'error'].includes(cur.edit_status))
-    // Também polla enquanto o vídeo novo (completa, pós-edit) ainda não chegou.
-    const videoPending = cur.plan === 'completa' && cur.self_edit_used && cur.edit_status === 'done' && !cur.video_brinde_url
+    // Também polla enquanto o vídeo (completa paga) ainda não chegou — compra nova OU pós-edit.
+    const videoPending = cur.plan === 'completa' && !!cur.paid_at && !cur.video_brinde_url
     if (!regen && !videoPending) return
     let alive = true
     const tick = async () => {
@@ -1399,7 +1399,8 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
     // Layout "novas em destaque + originais recolhidas": só quando a nova já
     // ficou pronta (durante a regeneração ainda mostra as atuais normalmente).
     const showNewLayout = hasEdit && !regenerating
-    const videoGenerating = o.plan === 'completa' && !o.video_brinde_url && (regenerating || hasEdit)
+    // Completa paga sem vídeo → sempre mostra "sendo gerado" (compra nova OU pós-edit).
+    const videoGenerating = o.plan === 'completa' && !!o.paid_at && !o.video_brinde_url && !editErr
     const isEditing = editingId === o.id
     return (
       <div className="my-order-detail">
