@@ -59,7 +59,10 @@ export default function PaymentPage() {
         navigate(`/p/${id}`, { replace: true })
         return
       }
-      setOrder(o)
+      // ⚠️ /status NÃO retorna o campo `id` — injetamos o da rota pra que o
+      // self-edit (MusicSelfEdit) chame /api/order/{id}/edit/* com id válido.
+      // Sem isso vira /api/order/undefined/... → 400 e o editor falha.
+      setOrder({ ...o, id })
       // SEMPRE default 'completa' (R$29,90 com vídeo) na PaymentPage — independente
       // do que o cliente escolheu na criação do pedido. Decisão do dono em 16/jun:
       // o plano "completa" é o que queremos pré-selecionado pra maximizar upsell.
@@ -98,7 +101,8 @@ export default function PaymentPage() {
         const d = await fetchOrderStatus(id)
         if (!alive || !d || d.error) return
         // Se pagou no meio, o usePixPolling/redirect cuidam; aqui só mescla dados.
-        setOrder(prev => ({ ...(prev || {}), ...d }))
+        // Reinjeta o id (o /status não traz) pra não perder a referência.
+        setOrder(prev => ({ ...(prev || {}), ...d, id }))
       } catch (_) {}
     }
     const iv = setInterval(tick, 15000)
