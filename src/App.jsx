@@ -1075,7 +1075,7 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     Baixar versão {i + 1}
                   </a>
-                  <ShareButton url={url} kind="audio" honoreeName={o.honoree_name} title={`Para ${o.honoree_name || 'você'}`} label={`Enviar versão ${i + 1} no WhatsApp`} variant="ghost" />
+                  <ShareButton url={url} kind="audio" honoreeName={o.honoree_name} title={`Para ${o.honoree_name || 'você'}`} label={`Enviar versão ${i + 1} no WhatsApp`} variant="whatsapp" />
                 </div>
               </div>
             ))}
@@ -1087,7 +1087,7 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
                     Baixar vídeo
                   </a>
-                  <ShareButton url={o.video_brinde_url} kind="video" honoreeName={o.honoree_name} title={`Para ${o.honoree_name || 'você'}`} label="Enviar vídeo no WhatsApp" variant="ghost" />
+                  <ShareButton url={o.video_brinde_url} kind="video" honoreeName={o.honoree_name} title={`Para ${o.honoree_name || 'você'}`} label="Enviar vídeo no WhatsApp" variant="whatsapp" />
                 </div>
               </div>
             )}
