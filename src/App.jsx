@@ -1079,10 +1079,24 @@ const MSE_ENABLED = (() => {
   } catch { return false }
 })()
 const MSE_MAX_GENS = 3
-const MSE_RITMOS = ['Sertanejo', 'MPB', 'Pop romântico', 'Pagode', 'Gospel', 'Forró', 'Rock', 'Rap', 'Piano/Voz']
-const MSE_OCASIOES = ['Aniversário', 'Casamento', 'Bodas', 'Dia das Mães', 'Homenagem', 'Declaração de amor', 'Amizade', 'Formatura', 'Saudade', 'Outra']
+// Primeiros 8 aparecem de cara; o resto fica atrás do "Ver mais".
+const MSE_RITMOS = [
+  'Sertanejo', 'Sertanejo universitário', 'MPB', 'Pop romântico', 'Pagode', 'Gospel', 'Forró', 'Voz e violão',
+  'Samba', 'Rock', 'Rap / Hip-hop', 'Funk', 'Piano e voz', 'Bossa Nova', 'Axé', 'Country', 'Reggae', 'Infantil', 'Modão', 'Pop',
+]
+const MSE_RITMOS_CORE = 8
+const MSE_OCASIOES = ['Aniversário', 'Casamento', 'Bodas', 'Dia das Mães', 'Dia dos Pais', 'Homenagem', 'Declaração de amor', 'Amizade', 'Formatura', 'Saudade', 'Outra']
 const MSE_VOZES = ['Feminina', 'Masculina']
 const MSE_SAMPLE = 'Aqui vai aparecer a letra da sua música\npra você ajustar do jeitinho que quiser…'
+// voice_preference ("Masculino"/"Feminino") → rótulo da pill ("Masculina"/"Feminina")
+const mseVoiceLabel = (v) => { const s = String(v || '').toLowerCase(); return s.startsWith('masc') ? 'Masculina' : s.startsWith('fem') ? 'Feminina' : '' }
+// MOCK: aplica uma instrução simples ("troca X para Y") na letra — só pra dar
+// realismo à prévia. No backend, quem faz isso de verdade é o GPT.
+const mseMockApply = (text, instr) => {
+  const m = String(instr).match(/troc\w*\s+(?:o\s+)?(?:nome\s+)?(?:de\s+|da\s+|do\s+)?([\p{L}]{2,})\s+(?:para|pra|por)\s+([\p{L}]{2,})/iu)
+  if (m) { try { return text.replace(new RegExp(m[1], 'giu'), m[2]) } catch { return text } }
+  return text
+}
 
 function MusicSelfEdit({ order, onClose, onConfirmed }) {
   // passo: 'menu' | 'data' | 'lyrics' | 'confirm' | 'sending'
@@ -1091,40 +1105,57 @@ function MusicSelfEdit({ order, onClose, onConfirmed }) {
   const [genLeft, setGenLeft] = useState(MSE_MAX_GENS)
   const [busy, setBusy] = useState(false)
   const [instruction, setInstruction] = useState('')
+  const [lyricNote, setLyricNote] = useState('')   // aviso ACIMA da textarea (nunca dentro da letra → não vai pro Suno)
+  const [showMoreRitmos, setShowMoreRitmos] = useState(false)
   const [form, setForm] = useState({
     honoree_name: order.honoree_name || '',
-    story: order.story || order.history || '',
+    story: order.story || '',
     genre: order.genre || order.style_raw || '',
     occasion: order.occasion || '',
-    voice: order.voice_preference || '',
+    voice: mseVoiceLabel(order.voice_preference),
   })
 
-  // A letra (final_lyrics) não vem no lookup — busca no /status ao abrir.
+  // A letra + os dados do pedido (história, ritmo, ocasião, voz) não vêm no
+  // lookup — busca no /status ao abrir pra prepopular tudo (inclui o caso de
+  // vários homenageados: a história já traz todos os nomes).
   useEffect(() => {
-    if (order.final_lyrics) return
     let alive = true
     fetch(`${API_URL}/api/order/${order.id}/status`).then(r => r.json()).then(d => {
       if (!alive || !d) return
       if (d.final_lyrics) setLyrics(prev => prev || d.final_lyrics)
-      setForm(f => ({ ...f, honoree_name: d.honoree_name || f.honoree_name }))
+      setForm(f => ({
+        honoree_name: f.honoree_name || d.honoree_name || '',
+        story: f.story || d.story || '',
+        genre: f.genre || d.genre || d.style_raw || '',
+        occasion: f.occasion || d.occasion || '',
+        voice: f.voice || mseVoiceLabel(d.voice_preference),
+      }))
     }).catch(() => {})
     return () => { alive = false }
   }, [order.id])
 
   const setField = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  // Lista de ritmos: garante que o ritmo atual do pedido apareça mesmo fora da lista.
+  const ritmoList = form.genre && !MSE_RITMOS.includes(form.genre) ? [form.genre, ...MSE_RITMOS] : MSE_RITMOS
+  const ritmosShown = showMoreRitmos ? ritmoList : ritmoList.slice(0, MSE_RITMOS_CORE)
 
   // MOCK da geração de letra — o backend fará via GPT (generateLyricsWithGPT
-  // no modo 'dados', ou aplicando a instrução livre na letra atual).
+  // no modo 'dados', ou aplicando a instrução livre na letra atual). ⚠️ O aviso
+  // "✨…" fica FORA da textarea — a letra em si nunca é poluída (nada disso vai
+  // pro SUNOAPI).
   const genLyrics = async (mode) => {
     if (genLeft <= 0 || busy) return
     if (mode === 'instruction' && !instruction.trim()) return
     setBusy(true)
-    await new Promise(r => setTimeout(r, 1200))
-    const base = (lyrics || MSE_SAMPLE)
-    const head = mode === 'data'
-      ? `✨ Nova letra a partir dos seus dados (${form.honoree_name || 'homenagem'}${form.genre ? ' · ' + form.genre : ''})`
-      : `✨ Letra ajustada — "${instruction.trim()}"`
-    setLyrics(`${head}\n\n${base}`)
+    await new Promise(r => setTimeout(r, 1100))
+    if (mode === 'instruction') {
+      const instr = instruction.trim()
+      setLyrics(prev => mseMockApply(prev || MSE_SAMPLE, instr))
+      setLyricNote(`✨ Letra ajustada com: "${instr}"`)
+    } else {
+      if (!lyrics) setLyrics(MSE_SAMPLE)
+      setLyricNote(`✨ Nova letra gerada dos seus dados${form.genre ? ' · ' + form.genre : ''}`)
+    }
     setGenLeft(n => n - 1)
     setInstruction('')
     setBusy(false)
@@ -1184,9 +1215,12 @@ function MusicSelfEdit({ order, onClose, onConfirmed }) {
           </label>
           <span className="mse-lbl">Ritmo</span>
           <div className="mse-pills">
-            {MSE_RITMOS.map(r => (
+            {ritmosShown.map(r => (
               <button key={r} type="button" className={`mse-pill ${form.genre === r ? 'is-on' : ''}`} onClick={() => setField('genre', r)}>{r}</button>
             ))}
+            {!showMoreRitmos && ritmoList.length > MSE_RITMOS_CORE && (
+              <button type="button" className="mse-pill mse-pill--more" onClick={() => setShowMoreRitmos(true)}>+ Ver mais</button>
+            )}
           </div>
           <span className="mse-lbl">Ocasião</span>
           <div className="mse-pills">
@@ -1212,6 +1246,7 @@ function MusicSelfEdit({ order, onClose, onConfirmed }) {
       {step === 'lyrics' && (
         <div className="mse-form">
           <span className="mse-lbl">A letra da sua música <small>(edite à vontade)</small></span>
+          {lyricNote && <div className="mse-note">{lyricNote}</div>}
           <textarea className="mse-textarea" value={lyrics} onChange={e => setLyrics(e.target.value)} rows={12} placeholder={MSE_SAMPLE} />
 
           {genLeft > 0 && (
