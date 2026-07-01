@@ -4367,9 +4367,13 @@ export default function App() {
           // Dispara Purchase no Meta Pixel + Google Analytics nesse mesmo gancho
           // (cobre tanto auto-aprovação por IA quanto aprovação manual via polling).
           try { trackPurchase(oid) } catch (_) {}
+          // Telefone pra redirecionar pra Minhas Músicas (várias fontes; a do modal
+          // é a mais confiável pois vem do que o cliente digitou no quiz).
+          let phone = String(pixModal?.customerPhone || (customer && customer.phone) || '').replace(/\D/g, '')
           try {
             const row = await apiOrderStatus(oid)
             if (row) {
+              if (!phone) phone = String(row.phone || '').replace(/\D/g, '')
               // full_audio_urls vem como array — a sunoapi.org sempre gera 2
               // versões. A primeira fica como original_url (música principal),
               // a 2ª aparece como BRINDE no card desbloqueado.
@@ -4395,6 +4399,15 @@ export default function App() {
               }
             }
           } catch (_) {}
+          // 🚚 Redireciona pra Minhas Músicas (vê TODAS + ajusta). Full reload
+          // garante dados frescos — resolve o "não apareceu, precisou atualizar".
+          // Sem telefone (raro), cai no /p/ do pedido pago (sempre mostra a música).
+          setTimeout(() => {
+            try {
+              if (phone && phone.length >= 10) window.location.href = `/?tel=${phone}`
+              else window.location.href = `/p/${oid}`
+            } catch (_) {}
+          }, 1200)
         }}
       />
 
