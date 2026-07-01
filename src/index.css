@@ -1632,9 +1632,14 @@ body {
 .my-order-player { margin: 0 0 12px; }
 
 .my-order-actions {
-  display: flex; flex-wrap: wrap;
+  display: flex; flex-wrap: nowrap;
   gap: 8px;
 }
+/* Botões lado a lado (Salvar Música | Enviar no WhatsApp), largura igual —
+   estilo DeliveryPage. O .unlocked-share é 100%+margin em outros lugares; aqui
+   sobrescreve pra caber na mesma linha. */
+.my-order-actions > * { flex: 1 1 0; min-width: 0; }
+.my-order-actions .unlocked-share { width: auto; margin-top: 0; }
 .my-order-btn {
   display: inline-flex; align-items: center; justify-content: center;
   gap: 6px;
