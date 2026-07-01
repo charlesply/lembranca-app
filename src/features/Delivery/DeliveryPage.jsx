@@ -44,6 +44,7 @@ export default function DeliveryPage() {
   const [err, setErr] = useState(null)
   const [shareState, setShareState] = useState({})
   const setShare = (key, patch) => setShareState(prev => ({ ...prev, [key]: { ...prev[key], ...patch } }))
+  const [showOrig, setShowOrig] = useState(false) // originais recolhidas quando há novas
 
   useEffect(() => {
     if (!id) { setErr('Link inválido. Verifique a URL.'); return }
@@ -147,14 +148,38 @@ export default function DeliveryPage() {
   // a regeneração o full_audio_urls ainda é o antigo (evita mostrar 2x igual).
   const regenerating = data.edit_status === 'regenerating'
   const hasEdit = prevAudios.length > 0 && !regenerating
-  const audios = hasEdit
-    ? [...prevAudios.map((url, i) => ({ url, grp: 'Original', n: i + 1 })),
-       ...newAudios.map((url, i) => ({ url, grp: 'Nova', n: i + 1 }))]
-    : newAudios.map((url, i) => ({ url, grp: '', n: i + 1 }))
-  const multi = audios.length > 1
+  const multi = newAudios.length > 1
+  const honoree = data.honoree_name || 'você'
+  // Listas: NOVAS em destaque; ORIGINAIS recolhidas atrás do toggle.
+  const newList = newAudios.map((url, i) => ({ url, grp: hasEdit ? 'Nova' : '', n: i + 1 }))
+  const origList = hasEdit ? prevAudios.map((url, i) => ({ url, grp: 'Original', n: i + 1 })) : []
+
+  // Renderiza uma faixa de áudio (player + baixar + compartilhar).
+  const renderAudio = (a) => {
+    const url = a.url
+    const vtag = a.grp === 'Original' ? `original-v${a.n}` : a.grp === 'Nova' ? `nova-v${a.n}` : (multi ? `v${a.n}` : '')
+    const filename = safeFilename(honoree, 'mp3', vtag)
+    const heading = a.grp === 'Original' ? `🎵 Versão original ${a.n}` : a.grp === 'Nova' ? `✨ Versão nova ${a.n}` : `🎧 Música ${multi ? '— Versão ' + a.n : ''}`
+    const label = `🎵 Música para ${honoree}` + (a.grp ? ` (${a.grp} ${a.n})` : (multi ? ` (Versão ${a.n})` : ''))
+    const key = a.grp === 'Original' ? `orig-${a.n}` : `audio-${a.n}`
+    const st = shareState[key] || {}
+    return (
+      <section key={key} className="dp-section">
+        <h2>{heading}</h2>
+        <audio controls preload="metadata" src={url} style={{ width: '100%' }} />
+        <div className="dp-btn-row">
+          <a className="dp-btn dp-btn-primary" href={url} download={filename}>⬇ Baixar MP3</a>
+          <button type="button" className="dp-btn dp-btn-wa" disabled={st.loading}
+                  onClick={() => handleShare(key, url, filename, 'audio/mpeg', label)}>
+            {st.loading ? <><Spinner /> Preparando…</> : <><WaIcon /> Compartilhar</>}
+          </button>
+        </div>
+        {st.msg && <p className="dp-share-msg">{st.msg}</p>}
+      </section>
+    )
+  }
 
   const video = data.video_brinde_url
-  const honoree = data.honoree_name || 'você'
   const paid = !!data.paid_at
 
   return (
@@ -170,34 +195,8 @@ export default function DeliveryPage() {
           <div className="dp-regen">🎼 <b>Sua nova música está sendo criada</b> — fica pronta em 5 a 10 minutinhos e aparece aqui sozinha. Enquanto isso, suas versões atuais continuam abaixo 💛</div>
         )}
 
-        {audios.map((a, i) => {
-          const url = a.url
-          const vtag = a.grp ? `${a.grp === 'Original' ? 'original' : 'nova'}-v${a.n}` : (multi ? `v${a.n}` : '')
-          const filename = safeFilename(honoree, 'mp3', vtag)
-          const heading = a.grp ? `${a.grp === 'Original' ? '🎵 Versão original' : '✨ Versão nova'} ${a.n}` : `🎧 Música ${multi ? `— Versão ${a.n}` : ''}`
-          const label = `🎵 Música para ${honoree}${a.grp ? ' (' + a.grp + ' ' + a.n + ')' : (multi ? ' (Versão ' + a.n + ')' : '')}`
-          const key = `audio-${i}`
-          const st = shareState[key] || {}
-          return (
-            <section key={url + i} className="dp-section">
-              <h2>{heading}</h2>
-              <audio controls preload="metadata" src={url} style={{ width: '100%' }} />
-              <div className="dp-btn-row">
-                <a className="dp-btn dp-btn-primary" href={url} download={filename}>
-                  ⬇ Baixar MP3
-                </a>
-                <button type="button" className="dp-btn dp-btn-wa"
-                        disabled={st.loading}
-                        onClick={() => handleShare(key, url, filename, 'audio/mpeg', label)}>
-                  {st.loading
-                    ? <><Spinner /> Preparando…</>
-                    : <><WaIcon /> Compartilhar</>}
-                </button>
-              </div>
-              {st.msg && <p className="dp-share-msg">{st.msg}</p>}
-            </section>
-          )
-        })}
+        {/* NOVAS em destaque (ou versões normais quando não houve edição) */}
+        {newList.map(renderAudio)}
 
         {video ? (() => {
           const filename = safeFilename(honoree, 'mp4')
@@ -238,7 +237,17 @@ export default function DeliveryPage() {
           </section>
         )}
 
-        {!audios.length && !video && (
+        {/* Versões ORIGINAIS recolhidas — o cliente vê as novas primeiro */}
+        {origList.length > 0 && (
+          <>
+            <button type="button" className="dp-orig-toggle" onClick={() => setShowOrig(v => !v)}>
+              {showOrig ? '▾' : '▸'} Versões originais ({origList.length})
+            </button>
+            {showOrig && origList.map(renderAudio)}
+          </>
+        )}
+
+        {!newList.length && !video && (
           <p className="dp-subtitle" style={{ marginTop: 24 }}>
             Sua música ainda está sendo gerada. Volte em alguns minutos.
           </p>
@@ -296,6 +305,8 @@ function Shell({ children }) {
         .dp-title span { color: #CC785C; }
         .dp-subtitle { text-align: center; color: #7a6354; margin: 0 0 28px; font-size: 15px; }
         .dp-regen { background: #fff5ee; border: 1px solid #f3d9c7; color: #7a5334; border-radius: 14px; padding: 14px 16px; margin: 0 0 24px; font-size: 14px; line-height: 1.5; text-align: center; }
+        .dp-orig-toggle { width: 100%; margin: 20px 0 4px; padding: 13px 16px; background: #fdfaf6; border: 1px solid #f0e2d4; border-radius: 12px; color: #7a6354; font-size: 13px; font-weight: 700; text-align: left; cursor: pointer; }
+        .dp-orig-toggle:hover { border-color: #e3c9b3; }
         .dp-section { margin: 24px 0; padding: 20px; background: #fdfaf6; border-radius: 14px; border: 1px solid #f6ede2; }
         .dp-section h2 { font-size: 16px; margin: 0 0 12px; font-weight: 600; color: #2b1d14; }
         .dp-btn-row {

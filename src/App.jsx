@@ -1310,6 +1310,9 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
   // Overrides do /status por id (auto-update sem F5 enquanto regenera).
   const [overrides, setOverrides] = useState({})
   const withOverride = (o) => (o && overrides[o.id]) ? { ...o, ...overrides[o.id] } : o
+  // Originais recolhidas (quando há versões novas) — o cliente vê as NOVAS de
+  // cara e clica pra expandir as originais (evita achar que não gerou as novas).
+  const [showOriginals, setShowOriginals] = useState(false)
 
   // Auto-update sem F5: enquanto a música nova está sendo criada
   // (edit_status='regenerating'), polla o /status a cada 15s e mescla — quando
@@ -1319,8 +1322,10 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
     const base = (orders || []).find(o => o.id === selectedId)
     if (!base) return
     const cur = { ...base, ...(overrides[selectedId] || {}) }
-    const active = cur.edit_status === 'regenerating' || (justSent[selectedId] && !['done', 'error'].includes(cur.edit_status))
-    if (!active) return
+    const regen = cur.edit_status === 'regenerating' || (justSent[selectedId] && !['done', 'error'].includes(cur.edit_status))
+    // Também polla enquanto o vídeo novo (completa, pós-edit) ainda não chegou.
+    const videoPending = cur.plan === 'completa' && cur.self_edit_used && cur.edit_status === 'done' && !cur.video_brinde_url
+    if (!regen && !videoPending) return
     let alive = true
     const tick = async () => {
       try {
@@ -1333,7 +1338,7 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
     tick()
     return () => { alive = false; clearInterval(iv) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, justSent, overrides[selectedId] && overrides[selectedId].edit_status])
+  }, [selectedId, justSent, overrides[selectedId] && overrides[selectedId].edit_status, overrides[selectedId] && overrides[selectedId].video_brinde_url])
 
   // Formata data BR: 03/06/2026 às 13:45
   const fmtDate = (iso) => {
@@ -1386,6 +1391,10 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
     // Estados do self-edit
     const regenerating = o.edit_status === 'regenerating' || (justSent[o.id] && !['done', 'error'].includes(o.edit_status))
     const canEdit = MSE_ENABLED && !!o.paid_at && !o.self_edit_used && !hasEdit && !regenerating && !editErr
+    // Layout "novas em destaque + originais recolhidas": só quando a nova já
+    // ficou pronta (durante a regeneração ainda mostra as atuais normalmente).
+    const showNewLayout = hasEdit && !regenerating
+    const videoGenerating = o.plan === 'completa' && !o.video_brinde_url && (regenerating || hasEdit)
     const isEditing = editingId === o.id
     return (
       <div className="my-order-detail">
@@ -1401,11 +1410,15 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
 
         {o.paid_at ? (
           <>
-            {hasEdit && <div className="my-order-vgroup">🎵 Versões originais</div>}
-            {prev.map((url, i) => renderVersion(url, `p${i}`, hasEdit ? `Original ${i + 1}` : `Versão ${i + 1}`, `lembrancacantada-${safeName}-original-v${i + 1}.mp3`))}
-            {hasEdit && <div className="my-order-vgroup my-order-vgroup--new">✨ Suas versões novas</div>}
-            {versions.map((url, i) => renderVersion(url, `n${i}`, hasEdit ? `Nova ${i + 1}` : `Versão ${i + 1}`, `lembrancacantada-${safeName}-v${i + 1}.mp3`))}
-            {o.video_brinde_url && (
+            {/* NOVAS em destaque (quando já prontas); senão versões normais */}
+            {showNewLayout && <div className="my-order-vgroup my-order-vgroup--new">✨ Suas versões novas</div>}
+            {versions.map((url, i) => renderVersion(
+              url, `n${i}`,
+              showNewLayout ? `Nova ${i + 1}` : (versions.length > 1 ? `Versão ${i + 1}` : 'Sua música'),
+              `lembrancacantada-${safeName}-v${i + 1}.mp3`))}
+
+            {/* Vídeo pronto, ou aviso "sendo gerado" (completa pós-edit) */}
+            {o.video_brinde_url ? (
               <div className="my-order-version">
                 <span className="my-order-version-label">🎬 Vídeo com a letra</span>
                 <div className="my-order-actions">
@@ -1416,6 +1429,18 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
                   <ShareButton url={o.video_brinde_url} kind="video" honoreeName={o.honoree_name} title={`Para ${o.honoree_name || 'você'}`} label="Enviar vídeo no WhatsApp" variant="whatsapp" />
                 </div>
               </div>
+            ) : videoGenerating ? (
+              <div className="my-order-videogen">🎬 Seu {showNewLayout ? 'novo ' : ''}vídeo com a letra está sendo gerado — fica pronto em alguns minutinhos e aparece aqui sozinho 💛</div>
+            ) : null}
+
+            {/* Originais recolhidas (aparecem só ao clicar) */}
+            {showNewLayout && prev.length > 0 && (
+              <>
+                <button type="button" className="my-order-orig-toggle" onClick={() => setShowOriginals(v => !v)}>
+                  <span className="my-order-orig-caret">{showOriginals ? '▾' : '▸'}</span> Versões originais ({prev.length})
+                </button>
+                {showOriginals && prev.map((url, i) => renderVersion(url, `p${i}`, `Original ${i + 1}`, `lembrancacantada-${safeName}-original-v${i + 1}.mp3`))}
+              </>
             )}
 
             {/* ── SELF-EDIT: ajustar a própria música (1x) ── */}
