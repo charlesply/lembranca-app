@@ -30,11 +30,34 @@ function readOrderId(pathname) {
 }
 const MEDIA_RE = /(https?:\/\/[^\s]+?\.(?:mp3|mp4|m4a|wav|ogg))(?=$|\s)/i
 const URL_RE = /(https?:\/\/[^\s]+)/g
+// Marcador oculto que o backend usa pra passar o telefone pro botão "todas as
+// músicas" sem mostrar a URL. Ex.: [[tel:5511999998888]] → some no render.
+const HIDDEN_RE = /\[\[tel:\d+\]\]/g
+
+// Renderiza um trecho de texto com *negrito* estilo WhatsApp + links clicáveis.
+function renderRich(str, linkColor, keyBase) {
+  const out = []
+  str.split(URL_RE).forEach((seg, si) => {
+    if (/^https?:\/\//.test(seg)) {
+      out.push(<a key={`${keyBase}u${si}`} href={seg} target="_blank" rel="noopener noreferrer"
+        style={{ color: linkColor, textDecoration: 'underline', fontWeight: 600, wordBreak: 'break-all' }}>{seg}</a>)
+      return
+    }
+    // *negrito*: quebra mantendo os delimitadores pra transformar em <strong>
+    seg.split(/(\*[^*\n]+\*)/g).forEach((bp, bi) => {
+      if (!bp) return
+      if (/^\*[^*\n]+\*$/.test(bp)) out.push(<strong key={`${keyBase}b${si}-${bi}`}>{bp.slice(1, -1)}</strong>)
+      else out.push(<span key={`${keyBase}t${si}-${bi}`}>{bp}</span>)
+    })
+  })
+  return out
+}
 
 function Body({ text, mine }) {
-  const str = String(text || '')
+  let str = String(text || '')
   const media = str.match(MEDIA_RE)
-  const parts = str.split(URL_RE)
+  // remove marcadores ocultos ([[tel:...]]) — são só pro widget, não pro cliente.
+  str = str.replace(HIDDEN_RE, '')
   // No balão do cliente (terracota) o link é branco; no da Bia (fundo branco) usa a
   // cor da marca — senão fica branco-no-branco e some.
   const linkColor = mine ? '#fff' : '#AB4B2B'
@@ -43,9 +66,7 @@ function Body({ text, mine }) {
       {media && (/\.mp4$/i.test(media[1])
         ? <video src={media[1]} controls style={{ maxWidth: '100%', borderRadius: 10, marginBottom: 6 }} />
         : <audio src={media[1]} controls style={{ width: '100%', marginBottom: 6 }} />)}
-      <span>{parts.map((p, i) => /^https?:\/\//.test(p)
-        ? <a key={i} href={p} target="_blank" rel="noopener noreferrer" style={{ color: linkColor, textDecoration: 'underline', fontWeight: 600, wordBreak: 'break-all' }}>{p}</a>
-        : <span key={i}>{p}</span>)}</span>
+      <span>{renderRich(str, linkColor, 'r')}</span>
     </>
   )
 }
@@ -109,7 +130,17 @@ export default function SupportChat() {
     try { sessionStorage.setItem('lc_chat_msgs', JSON.stringify(arr.slice(-80))) } catch (_) {}
   }, [])
   const push = useCallback((m) => {
-    setMsgs(prev => { const next = [...prev, m]; persist(next); return next })
+    setMsgs(prev => {
+      // Dedup: a resposta do bot chega 2x (resposta direta do POST + polling do
+      // vendedor). Se já existe uma msg 'out' idêntica (mesmo created_at+corpo),
+      // ignora — senão a entrega aparece duplicada.
+      if (m.role === 'out') {
+        if (m.id && prev.some(x => x.id === m.id)) return prev
+        const key = (m.created_at || '') + '|' + (m.body || '')
+        if (prev.some(x => x.role === 'out' && ((x.created_at || '') + '|' + (x.body || '')) === key)) return prev
+      }
+      const next = [...prev, m]; persist(next); return next
+    })
     if (m.role === 'out' && m.created_at) lastOutAt.current = m.created_at
   }, [persist])
 
@@ -154,7 +185,7 @@ export default function SupportChat() {
           if (m.author && m.author !== 'bia') {
             // resposta humana do vendedor
           }
-          push({ role: 'out', body: m.body, author: m.author, created_at: m.created_at })
+          push({ role: 'out', body: m.body, author: m.author, created_at: m.created_at, id: m.id })
         }
       } catch (_) {}
     }, 4000)
@@ -169,7 +200,7 @@ export default function SupportChat() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: sessionRef.current, order_id: orderId || undefined, text: t, page: loc.pathname }),
       }).then(x => x.json())
-      for (const m of (r.replies || [])) push({ role: 'out', body: m.body, author: m.author || 'bia', created_at: m.created_at })
+      for (const m of (r.replies || [])) push({ role: 'out', body: m.body, author: m.author || 'bia', created_at: m.created_at, id: m.id })
     } catch (_) {
       push({ role: 'out', body: 'Ops, tive um probleminha de conexão 😣 Pode tentar de novo em instantes?', author: 'bia' })
     } finally { setBusy(false) }
@@ -263,9 +294,12 @@ export default function SupportChat() {
               if (busy) return null
               const lastOut = [...msgs].reverse().find(m => m.role === 'out')
               if (!lastOut || !/\/(p|finalizar)\//.test(String(lastOut.body || ''))) return null
-              // usa o link ?tel= que o bot mandou; senão monta com o telefone digitado
-              const fromBot = String(lastOut.body || '').match(/https?:\/\/[^\s]*[?&]tel=(\d+)/)
-              let tel = fromBot ? fromBot[1] : ''
+              const body = String(lastOut.body || '')
+              // telefone: 1º do marcador oculto [[tel:...]]; senão link ?tel=; senão digitado
+              let tel = ''
+              const mk = body.match(/\[\[tel:(\d+)\]\]/)
+              if (mk) tel = mk[1]
+              if (!tel) { const u = body.match(/https?:\/\/[^\s]*[?&]tel=(\d+)/); tel = u ? u[1] : '' }
               if (!tel) {
                 const lastPhone = [...msgs].reverse().find(m => m.role === 'in' && String(m.body || '').replace(/\D/g, '').length >= 10)
                 tel = lastPhone ? String(lastPhone.body).replace(/\D/g, '') : ''
