@@ -186,9 +186,14 @@ async function apiPayVerify(orderId, transaction_nsu, slug) {
     return await r.json()
   } catch (_) { return { ok: false, paid: false } }
 }
-async function apiOrderLookup(phone) {
+async function apiOrderLookup(query) {
+  // query: string (telefone, retrocompat) OU { phone } OU { email }
   try {
-    const r = await fetch(`${API_URL}/api/order/lookup?phone=${encodeURIComponent(phone)}`)
+    let qs
+    if (typeof query === 'string') qs = `phone=${encodeURIComponent(query)}`
+    else if (query && query.email) qs = `email=${encodeURIComponent(query.email)}`
+    else qs = `phone=${encodeURIComponent((query && query.phone) || '')}`
+    const r = await fetch(`${API_URL}/api/order/lookup?${qs}`)
     if (!r.ok) return { ok: false, orders: [] }
     return await r.json()
   } catch (_) { return { ok: false, orders: [] } }
@@ -745,13 +750,19 @@ async function openHelpOnWhatsApp({ orderId, honoreeName, customerName, customer
    reconhecida automaticamente.
    ══════════════════════════════════════════════════════════════ */
 function LookupOrdersModal({ open, onClose, onFound }) {
+  const [mode, setMode] = useState('phone')   // 'phone' | 'email'
   const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [notFound, setNotFound] = useState(false)   // não achou → oferece o outro método em DESTAQUE
+
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+  const switchMode = () => { setMode(m => m === 'phone' ? 'email' : 'phone'); setError(''); setNotFound(false) }
 
   useEffect(() => {
     if (!open) return
-    setPhone(''); setLoading(false); setError('')
+    setMode('phone'); setPhone(''); setEmail(''); setLoading(false); setError(''); setNotFound(false)
     // Decisão do dono: modal NÃO fecha com ESC nem clique fora — só no X.
     // Evita perda acidental de progresso.
     const prev = document.body.style.overflow
@@ -777,25 +788,28 @@ function LookupOrdersModal({ open, onClose, onFound }) {
   }
 
   const submit = async () => {
+    setError(''); setNotFound(false)
+    const isEmail = mode === 'email'
     const digits = phone.replace(/\D/g, '')
-    if (digits.length < 10) {
-      setError('Digita o WhatsApp com DDD (mínimo 10 dígitos)')
-      return
-    }
-    setLoading(true); setError('')
+    if (isEmail) { if (!emailOk) { setError('Digita um e-mail válido'); return } }
+    else if (digits.length < 10) { setError('Digita o WhatsApp com DDD (mínimo 10 dígitos)'); return }
+
+    setLoading(true)
     try {
-      const resp = await apiOrderLookup(digits)
+      const em = email.trim().toLowerCase()
+      const resp = await apiOrderLookup(isEmail ? { email: em } : { phone: digits })
       const orders = Array.isArray(resp?.orders) ? resp.orders : []
       const real = orders.filter(o => o.preview_audio_url || o.paid_at)
       if (real.length === 0) {
-        setError('Não encontramos músicas com esse número. Que tal criar a primeira?')
+        setError(isEmail ? 'Não encontramos músicas com esse e-mail.' : 'Não encontramos músicas com esse número.')
+        setNotFound(true)
         setLoading(false)
         return
       }
-      // pega nome do cliente do pedido mais recente
       const name = real.find(o => o.customer_name)?.customer_name || ''
-      saveCustomer({ phone: digits, name })
-      onFound && onFound({ phone: digits, name }, real)
+      const phoneOf = isEmail ? (real.find(o => o.phone)?.phone || '') : digits
+      saveCustomer({ phone: phoneOf, name })
+      onFound && onFound({ phone: phoneOf, name }, real)
     } catch (_) {
       setError('Deu um erro ao buscar. Tenta de novo em instantes.')
       setLoading(false)
@@ -812,35 +826,63 @@ function LookupOrdersModal({ open, onClose, onFound }) {
       <div className="lookup-modal-card">
         <button type="button" className="lookup-modal-close" onClick={onClose} aria-label="Fechar">✕</button>
         <span className="lookup-modal-eyebrow">Minhas músicas</span>
-        <h2 id="lookup-modal-title" className="lookup-modal-title">Qual o seu WhatsApp?</h2>
-        <p className="lookup-modal-sub">A gente busca todas as músicas feitas com esse número.</p>
+        <h2 id="lookup-modal-title" className="lookup-modal-title">{mode === 'phone' ? 'Qual o seu WhatsApp?' : 'Qual o seu e-mail?'}</h2>
+        <p className="lookup-modal-sub">A gente busca todas as músicas feitas com {mode === 'phone' ? 'esse número' : 'esse e-mail'}.</p>
 
-        <div className="lookup-modal-input-wrap">
-          <span className="lookup-modal-prefix" aria-hidden="true">+55</span>
-          <input
-            id="lookup-phone-input"
-            className="lookup-modal-input"
-            type="tel"
-            inputMode="numeric"
-            autoComplete="tel"
-            value={phone}
-            placeholder="(11) 99999-8888"
-            onChange={e => { setPhone(formatPhone(e.target.value)); setError('') }}
-            onKeyDown={e => { if (e.key === 'Enter') submit() }}
-            disabled={loading}
-            /* SEM autoFocus: em mobile causa salto da viewport quando o
-               teclado abre, atrapalha mais do que ajuda. Cliente toca
-               quando estiver pronto. */
-          />
-          <span className="lookup-modal-input-icon" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
-            </svg>
-          </span>
-        </div>
+        {mode === 'phone' ? (
+          <div className="lookup-modal-input-wrap">
+            <span className="lookup-modal-prefix" aria-hidden="true">+55</span>
+            <input
+              id="lookup-phone-input"
+              className="lookup-modal-input"
+              type="tel"
+              inputMode="numeric"
+              autoComplete="tel"
+              value={phone}
+              placeholder="(11) 99999-8888"
+              onChange={e => { setPhone(formatPhone(e.target.value)); setError(''); setNotFound(false) }}
+              onKeyDown={e => { if (e.key === 'Enter') submit() }}
+              disabled={loading}
+            />
+            <span className="lookup-modal-input-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+              </svg>
+            </span>
+          </div>
+        ) : (
+          <div className="lookup-modal-input-wrap">
+            <input
+              id="lookup-email-input"
+              className="lookup-modal-input"
+              style={{ paddingLeft: 16 }}
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              value={email}
+              placeholder="seu@email.com"
+              onChange={e => { setEmail(e.target.value); setError(''); setNotFound(false) }}
+              onKeyDown={e => { if (e.key === 'Enter') submit() }}
+              disabled={loading}
+            />
+            <span className="lookup-modal-input-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>
+              </svg>
+            </span>
+          </div>
+        )}
         {error && <p className="lookup-modal-error" role="alert">{error}</p>}
 
-        <button type="button" className="lookup-modal-btn" onClick={submit} disabled={loading || phone.replace(/\D/g,'').length < 10}>
+        {/* Não achou → oferece o OUTRO método em DESTAQUE (grande) */}
+        {notFound && (
+          <button type="button" className="lookup-modal-retry" onClick={switchMode}>
+            {mode === 'phone' ? '✉️ Tentar novamente com e-mail' : '📱 Tentar novamente com telefone'}
+          </button>
+        )}
+
+        <button type="button" className="lookup-modal-btn" onClick={submit}
+          disabled={loading || (mode === 'phone' ? phone.replace(/\D/g,'').length < 10 : !emailOk)}>
           {loading ? (
             <>
               <span className="pix-spinner" style={{width:14, height:14, borderWidth:2}} aria-hidden="true"/>
@@ -856,8 +898,15 @@ function LookupOrdersModal({ open, onClose, onFound }) {
           )}
         </button>
 
+        {/* Opção DISCRETA de alternar o método de busca */}
+        <button type="button" className="lookup-modal-switch" onClick={switchMode}>
+          {mode === 'phone' ? 'Prefere buscar por e-mail?' : 'Prefere buscar por telefone?'}
+        </button>
+
         <p className="lookup-modal-tip">
-          Identificamos pelo número — independente de como você digitou (com ou sem 55, com ou sem o 9).
+          {mode === 'phone'
+            ? 'Identificamos pelo número — independente de como você digitou (com ou sem 55, com ou sem o 9).'
+            : 'Use o mesmo e-mail que você informou ao criar a música.'}
         </p>
       </div>
     </div>,

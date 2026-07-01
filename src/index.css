@@ -1915,6 +1915,33 @@ body {
 }
 .lookup-modal-btn:active:not(:disabled) { transform: translateY(0); }
 .lookup-modal-btn:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+/* Retry em DESTAQUE quando não achou (abre grande, oferece o outro método) */
+.lookup-modal-retry {
+  width: 100%;
+  margin: 4px 0 10px;
+  padding: 13px 16px;
+  border: 1.5px solid var(--c-accent);
+  border-radius: var(--c-radius-pill);
+  background: var(--c-surface-tint);
+  color: var(--c-accent-deep);
+  font-family: var(--c-font);
+  font-size: 14.5px; font-weight: 700;
+  cursor: pointer;
+  transition: background-color var(--c-t-fast), transform var(--c-t-fast);
+}
+.lookup-modal-retry:hover { background: var(--c-primary-100); transform: translateY(-1px); }
+/* Alternar método — DISCRETO (link) */
+.lookup-modal-switch {
+  display: block; width: 100%;
+  margin: 12px 0 0;
+  background: none; border: none;
+  color: var(--c-text-muted);
+  font-family: var(--c-font);
+  font-size: 12.5px; font-weight: 600;
+  text-decoration: underline; text-underline-offset: 2px;
+  cursor: pointer;
+}
+.lookup-modal-switch:hover { color: var(--c-accent-deep); }
 .lookup-modal-tip {
   font-family: var(--c-font);
   font-size: 12px;
