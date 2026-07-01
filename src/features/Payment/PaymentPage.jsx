@@ -67,7 +67,14 @@ export default function PaymentPage() {
     hasPix: !!pix,
     onPaid: () => {
       setConfirming(true)
-      setTimeout(() => navigate(`/p/${id}`, { replace: true }), 1200)
+      // Pós-pagamento → área "Minhas músicas" (vê TODAS as músicas, pode ajustar).
+      // Fallback pro /p/ se não tiver telefone. Usa location pra garantir que o
+      // deep-link ?tel= do App rode (mount fresco).
+      const digits = String(order?.phone || '').replace(/\D/g, '')
+      setTimeout(() => {
+        if (digits) window.location.href = `/?tel=${digits}`
+        else navigate(`/p/${id}`, { replace: true })
+      }, 1200)
     },
   })
 

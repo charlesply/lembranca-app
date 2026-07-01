@@ -104,34 +104,37 @@ export default function DeliveryPage() {
 
   const videoPoster = useVideoPoster(data?.video_brinde_url)
 
+  // Cadeia de fallback IGUAL ao ShareButton de Minhas Músicas (que funciona de 1ª):
+  // 1) tenta anexar o FILE; 2) se falhar (perdeu o gesto do usuário após o fetch),
+  // compartilha só a URL; 3) por fim copia o link. Nunca cai em "download manual"
+  // como caminho principal — era isso que exigia vários cliques aqui no /p/.
   async function handleShare(key, url, filename, mimeType, label) {
     if (shareState[key]?.loading) return
     setShare(key, { loading: true, msg: null })
+    const text = 'Olha a música que eu fiz para você ❤️'
+    let shared = false, copied = false
     try {
-      if (!canShareFiles()) {
-        downloadFile(url, filename)
-        setShare(key, { loading: false, msg: 'Arquivo baixado! Abra o WhatsApp e anexe pelo clipe 📎' })
-        return
+      // 1) FILE (melhor no mobile — anexa direto no WhatsApp)
+      try {
+        const resp = await fetch(url, { credentials: 'omit' })
+        if (resp.ok) {
+          const blob = await resp.blob()
+          const file = new File([blob], filename, { type: mimeType || blob.type })
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: label, text })
+            shared = true
+          }
+        }
+      } catch (e) { if (e?.name === 'AbortError') shared = true }
+      // 2) URL (rápido, sem fetch)
+      if (!shared && navigator.share) {
+        try { await navigator.share({ title: label, text, url }); shared = true }
+        catch (e) { if (e?.name === 'AbortError') shared = true }
       }
-      const resp = await fetch(url, { credentials: 'omit' })
-      if (!resp.ok) throw new Error('http ' + resp.status)
-      const blob = await resp.blob()
-      const file = new File([blob], filename, { type: mimeType })
-      if (!navigator.canShare({ files: [file] })) {
-        downloadFile(url, filename)
-        setShare(key, { loading: false, msg: 'Arquivo baixado! Abra o WhatsApp e anexe pelo clipe 📎' })
-        return
-      }
-      await navigator.share({ files: [file], title: label, text: label })
-      setShare(key, { loading: false, msg: null })
-    } catch (e) {
-      if (e?.name === 'AbortError') {
-        setShare(key, { loading: false, msg: null })
-        return
-      }
-      console.warn('share failed, falling back to download:', e)
-      try { downloadFile(url, filename) } catch (_) {}
-      setShare(key, { loading: false, msg: 'Arquivo baixado! Abra o WhatsApp e anexe pelo clipe 📎' })
+      // 3) copia o link
+      if (!shared) { try { await navigator.clipboard.writeText(url); copied = true } catch (_) {} }
+    } finally {
+      setShare(key, { loading: false, msg: copied ? 'Link copiado! Cole no WhatsApp 💛' : null })
     }
   }
 

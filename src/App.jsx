@@ -2832,6 +2832,9 @@ export default function App() {
     if (USE_QUIZ) { track('OpenQuiz', null, true); setQuizModal(true); return }
     track('OpenChat', null, true); setChatModal(true)
   }
+  // Expõe pro widget de suporte (fora do App) abrir o quiz — botão "Quero criar
+  // uma música". Reatribui a cada render pra sempre apontar pro closure atual.
+  try { window.__lcStartQuiz = scrollToForm } catch (_) {}
   // "prefiro conversar" no quiz -> abre o chat da Bia (fallback)
   const openChatFromQuiz = () => { setQuizModal(false); track('OpenChat', null, true); setChatModal(true) }
   // quiz concluído -> reusa EXATAMENTE o fluxo de geração existente (handleSubmit)

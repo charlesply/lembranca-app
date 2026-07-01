@@ -173,6 +173,15 @@ export default function SupportChat() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [push])
 
+  // "Quero criar uma música" → abre o quiz do App (global exposto em App.jsx).
+  // Se não estiver na home (widget em /p etc.), navega pra home pra iniciar.
+  const startQuiz = useCallback(() => {
+    try {
+      if (typeof window.__lcStartQuiz === 'function') { setOpen(false); window.__lcStartQuiz(); return }
+    } catch (_) {}
+    window.location.href = '/'
+  }, [])
+
   // Polling de respostas do vendedor (CRM) enquanto aberto.
   useEffect(() => {
     if (!open) return
@@ -314,20 +323,28 @@ export default function SupportChat() {
               )
             })()}
 
-            {/* 2 botões de entrada — só na home/geral, antes do cliente escolher */}
+            {/* 3 botões de entrada — só na home/geral, antes do cliente escolher.
+                "Já paguei" e "Já tenho uma prévia" fazem a mesma busca (o bot
+                responde certo pelo status real do pedido); "Criar música" abre o quiz. */}
             {!chose && !orderId && !busy && msgs.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4, alignSelf: 'stretch' }}>
-                <button onClick={() => pickIntent('Tenho um pedido 📦', '__INTENT_ORDER__')}
+                <button onClick={() => pickIntent('Já paguei o pedido 💳', '__INTENT_ORDER__')}
                   style={{ width: '100%', padding: '12px 14px', borderRadius: 14, border: 'none', cursor: 'pointer',
                     background: `linear-gradient(135deg, ${P} 0%, ${P_DARK} 100%)`, color: '#fff', fontFamily: 'inherit',
                     fontSize: 14, fontWeight: 700, boxShadow: '0 4px 14px -4px rgba(0,0,0,.35)' }}>
-                  📦 Tenho um pedido
+                  💳 Já paguei o pedido
                 </button>
-                <button onClick={() => pickIntent('Quero saber mais ✨', '__INTENT_INFO__')}
+                <button onClick={() => pickIntent('Já tenho uma prévia 🎧', '__INTENT_ORDER__')}
                   style={{ width: '100%', padding: '12px 14px', borderRadius: 14, cursor: 'pointer',
                     background: '#fff', color: P_DARK, border: `1.5px solid ${P}`, fontFamily: 'inherit',
                     fontSize: 14, fontWeight: 700 }}>
-                  ✨ Quero saber mais
+                  🎧 Já tenho uma prévia
+                </button>
+                <button onClick={startQuiz}
+                  style={{ width: '100%', padding: '12px 14px', borderRadius: 14, cursor: 'pointer',
+                    background: '#fff', color: P_DARK, border: `1.5px solid ${P}`, fontFamily: 'inherit',
+                    fontSize: 14, fontWeight: 700 }}>
+                  ✨ Quero criar uma música
                 </button>
               </div>
             )}
