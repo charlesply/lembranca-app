@@ -1524,6 +1524,69 @@ body {
 .my-order-card--pending { border-left: 3px solid var(--c-warning); }
 .my-order-card--failed  { border-left: 3px solid var(--c-danger); }
 
+/* Card CLICÁVEL na lista (vira <button>): só mostra título+data+status; os
+   arquivos pra baixar aparecem só no detalhe (evita poluir com N músicas). */
+.my-order-card--clickable {
+  width: 100%;
+  display: flex; align-items: center; gap: 12px;
+  text-align: left;
+  font: inherit; color: inherit;
+  cursor: pointer;
+  -webkit-appearance: none; appearance: none;
+}
+.my-order-card-info { min-width: 0; flex: 1; display: flex; flex-direction: column; }
+.my-order-chevron { flex: 0 0 20px; color: var(--c-text-muted); }
+.my-order-card--clickable:hover .my-order-chevron { color: var(--c-accent-deep); }
+
+/* Link "Trocar número" no header — sutil, à direita */
+.my-orders-change-phone {
+  flex: 0 0 auto;
+  background: none; border: none;
+  color: var(--c-accent-deep);
+  font-size: 12.5px; font-weight: 600;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: var(--c-radius-sm);
+  text-decoration: underline; text-underline-offset: 2px;
+  transition: background-color var(--c-t-fast);
+}
+.my-orders-change-phone:hover { background: var(--c-surface-tint); }
+
+/* Detalhe de UMA música (arquivos pra baixar aparecem só aqui) */
+.my-order-detail {
+  max-width: 720px; margin: 0 auto;
+  padding: 18px 16px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.my-order-detail-back {
+  align-self: flex-start;
+  display: inline-flex; align-items: center; gap: 6px;
+  background: none; border: none;
+  color: var(--c-accent-deep);
+  font-size: 13px; font-weight: 600;
+  cursor: pointer; padding: 4px 0;
+}
+.my-order-detail-back:hover { text-decoration: underline; }
+.my-order-detail-head {
+  display: flex; flex-direction: column; gap: 4px;
+  padding-bottom: 6px;
+}
+.my-order-detail-head .my-order-status { align-self: flex-start; margin-top: 4px; }
+.my-order-version {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--c-radius-lg);
+  padding: 16px;
+  box-shadow: var(--c-shadow-sm);
+  display: flex; flex-direction: column; gap: 12px;
+}
+.my-order-version-label {
+  font-family: var(--c-font-mono);
+  font-size: 11px; font-weight: 700;
+  color: var(--c-accent-deep);
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+
 .my-order-head {
   display: flex; align-items: flex-start; justify-content: space-between;
   gap: 12px;

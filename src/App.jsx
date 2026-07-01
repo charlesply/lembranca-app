@@ -1017,7 +1017,12 @@ function ShareButton({ url, kind = 'audio', honoreeName, label = 'Enviar no What
    pra não acoplar) + handlers de navegação. Cada card mostra estado
    visual + ações condicionais (ouvir, baixar, finalizar pagamento).
    ══════════════════════════════════════════════════════════════ */
-function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPending }) {
+function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPending, onChangePhone }) {
+  // Navegação lista ↔ detalhe: guarda o ID selecionado (re-deriva do array pra
+  // refletir atualizações, ex: status vira pago). null = mostrando a lista.
+  const [selectedId, setSelectedId] = useState(null)
+  const selected = selectedId ? (orders || []).find(o => o.id === selectedId) : null
+
   // Formata data BR: 03/06/2026 às 13:45
   const fmtDate = (iso) => {
     if (!iso) return ''
@@ -1037,6 +1042,70 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
     if (o.status === 'failed') return { label: 'Falhou', cls: 'failed', icon: '!' }
     return { label: o.status || 'Em andamento', cls: 'pending', icon: '⏳' }
   }
+
+  // ── DETALHE de uma música: só aqui aparecem os arquivos pra baixar ──
+  const renderDetail = (o) => {
+    const st = statusOf(o)
+    const safeName = (o.honoree_name || 'musica').toLowerCase().replace(/[^a-z0-9]/g, '-')
+    // As 2 versões (full_audio_urls). Fallback pro original_audio_url (1 versão)
+    // se o pedido for antigo e não tiver o array.
+    const versions = (Array.isArray(o.full_audio_urls) && o.full_audio_urls.filter(Boolean).length)
+      ? o.full_audio_urls.filter(Boolean)
+      : (o.original_audio_url ? [o.original_audio_url] : [])
+    return (
+      <div className="my-order-detail">
+        <button type="button" className="my-order-detail-back" onClick={() => setSelectedId(null)}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Voltar para minhas músicas
+        </button>
+        <div className="my-order-detail-head">
+          <strong className="my-order-name">Para {o.honoree_name || 'alguém especial'}</strong>
+          <span className="my-order-date">{fmtDate(o.created_at)}</span>
+          <span className={`my-order-status my-order-status--${st.cls}`}><span aria-hidden="true">{st.icon}</span> {st.label}</span>
+        </div>
+
+        {o.paid_at ? (
+          <>
+            {versions.map((url, i) => (
+              <div key={i} className="my-order-version">
+                <span className="my-order-version-label">Versão {i + 1}</span>
+                <MiniPlayer src={url} label={`Versão ${i + 1}`} />
+                <div className="my-order-actions">
+                  <a className="my-order-btn my-order-btn--primary" href={url} download={`lembrancacantada-${safeName}-v${i + 1}.mp3`}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Baixar versão {i + 1}
+                  </a>
+                  <ShareButton url={url} kind="audio" honoreeName={o.honoree_name} title={`Para ${o.honoree_name || 'você'}`} label={`Enviar versão ${i + 1} no WhatsApp`} variant="ghost" />
+                </div>
+              </div>
+            ))}
+            {o.video_brinde_url && (
+              <div className="my-order-version">
+                <span className="my-order-version-label">🎬 Vídeo com a letra</span>
+                <div className="my-order-actions">
+                  <a className="my-order-btn" href={o.video_brinde_url} download={`lembrancacantada-${safeName}.mp4`}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                    Baixar vídeo
+                  </a>
+                  <ShareButton url={o.video_brinde_url} kind="video" honoreeName={o.honoree_name} title={`Para ${o.honoree_name || 'você'}`} label="Enviar vídeo no WhatsApp" variant="ghost" />
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="my-order-version">
+            {o.preview_audio_url && <><span className="my-order-version-label">Prévia</span><MiniPlayer src={o.preview_audio_url} label="Prévia (0:50)" /></>}
+            <div className="my-order-actions">
+              <button type="button" className="my-order-btn my-order-btn--primary" onClick={() => onPayPending && onPayPending(o)}>
+                Finalizar pagamento →
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="my-orders-page">
       <header className="my-orders-header">
@@ -1050,6 +1119,11 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
           <h1 className="my-orders-title">Minhas músicas</h1>
           {customer?.name && <p className="my-orders-sub">Oi, {customer.name.split(' ')[0]} 💜</p>}
         </div>
+        {onChangePhone && (
+          <button type="button" className="my-orders-change-phone" onClick={onChangePhone} title="Digitou o número errado? Troque aqui.">
+            Trocar número
+          </button>
+        )}
       </header>
 
       {orders.length === 0 ? (
@@ -1058,85 +1132,24 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
           <p className="my-orders-empty-text">Você ainda não tem músicas geradas — que tal começar uma?</p>
           <button className="btn-primary" onClick={onNew}>Criar minha primeira música</button>
         </div>
+      ) : selected ? (
+        renderDetail(selected)
       ) : (
         <>
           <div className="my-orders-list">
             {orders.map((o) => {
               const st = statusOf(o)
-              // PRÉVIA quando NÃO pago: tocar SO o preview_audio_url (curto, 50s).
-              // Antes caia em original_audio_url se preview_audio_url vazio →
-              // bug: cliente nao-pago ouvia a musica completa. Agora, sem
-              // pago, mostra so previa (ou nada se nao houver).
-              const audioUrl = o.paid_at
-                ? (o.original_audio_url || o.preview_audio_url)
-                : o.preview_audio_url
-              const safeName = (o.honoree_name || 'musica').toLowerCase().replace(/[^a-z0-9]/g, '-')
               return (
-                <article key={o.id} className={`my-order-card my-order-card--${st.cls}`}>
-                  <header className="my-order-head">
-                    <div>
-                      <strong className="my-order-name">Para {o.honoree_name || 'alguém especial'}</strong>
-                      <span className="my-order-date">{fmtDate(o.created_at)}</span>
-                    </div>
-                    <span className={`my-order-status my-order-status--${st.cls}`}>
-                      <span aria-hidden="true">{st.icon}</span> {st.label}
-                    </span>
-                  </header>
-                  {audioUrl && (
-                    <div className="my-order-player">
-                      <MiniPlayer src={audioUrl} label={o.paid_at ? 'Música completa' : 'Prévia (0:50)'} />
-                    </div>
-                  )}
-                  <div className="my-order-actions">
-                    {o.paid_at && o.original_audio_url && (
-                      <a className="my-order-btn my-order-btn--primary"
-                        href={o.original_audio_url}
-                        download={`historiascantadas-${safeName}.mp3`}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-                        </svg>
-                        Baixar música
-                      </a>
-                    )}
-                    {o.paid_at && o.video_brinde_url && (
-                      <a className="my-order-btn"
-                        href={o.video_brinde_url}
-                        download={`historiascantadas-${safeName}.mp4`}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                          <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>
-                        </svg>
-                        Baixar vídeo
-                      </a>
-                    )}
-                    {!o.paid_at && o.preview_audio_url && (
-                      <button type="button" className="my-order-btn my-order-btn--primary"
-                        onClick={() => onPayPending && onPayPending(o)}>
-                        Finalizar pagamento →
-                      </button>
-                    )}
-                    {/* Share no WhatsApp pra clientes pagos · musica + video */}
-                    {o.paid_at && o.original_audio_url && (
-                      <ShareButton
-                        url={o.original_audio_url}
-                        kind="audio"
-                        honoreeName={o.honoree_name}
-                        title={`Para ${o.honoree_name || 'você'}`}
-                        label="Enviar música no WhatsApp"
-                        variant="ghost"
-                      />
-                    )}
-                    {o.paid_at && o.video_brinde_url && (
-                      <ShareButton
-                        url={o.video_brinde_url}
-                        kind="video"
-                        honoreeName={o.honoree_name}
-                        title={`Para ${o.honoree_name || 'você'}`}
-                        label="Enviar vídeo no WhatsApp"
-                        variant="ghost"
-                      />
-                    )}
+                <button key={o.id} type="button" className={`my-order-card my-order-card--${st.cls} my-order-card--clickable`} onClick={() => setSelectedId(o.id)}>
+                  <div className="my-order-card-info">
+                    <strong className="my-order-name">Para {o.honoree_name || 'alguém especial'}</strong>
+                    <span className="my-order-date">{fmtDate(o.created_at)}</span>
                   </div>
-                </article>
+                  <span className={`my-order-status my-order-status--${st.cls}`}>
+                    <span aria-hidden="true">{st.icon}</span> {st.label}
+                  </span>
+                  <svg className="my-order-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
               )
             })}
           </div>
@@ -4015,6 +4028,7 @@ export default function App() {
           orders={customerOrders}
           onBack={() => setView('landing')}
           onNew={() => { setView('landing'); setTimeout(() => scrollToForm(), 100) }}
+          onChangePhone={() => setShowLookup(true)}
           onPayPending={(o) => {
             // Cliente quer pagar prévia pendente — abre modal PIX na tela de
             // ESCOLHA DE PLANO (startAt='plan' = default), pra o cliente
