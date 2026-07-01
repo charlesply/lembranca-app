@@ -765,8 +765,11 @@ function LookupOrdersModal({ open, onClose, onFound }) {
     if (!d) return ''
     // 13 dígitos = 55 + DDD + 9 + 8 (formato internacional completo)
     // 11 = DDD + 9 + 8 (formato nacional)
-    // exibe sempre como (DD) 9 XXXX-XXXX, ignorando 55 inicial pra estética
-    const local = d.startsWith('55') ? d.slice(2) : d
+    // ⚠️ Só remove o "55" quando for CÓDIGO DE PAÍS (número com 12-13 dígitos).
+    // Num número nacional (10-11 díg), o "55" inicial é o DDD (Rio Grande do Sul)
+    // e NÃO pode ser removido — senão o cliente do DDD 55 fica sem os primeiros
+    // dígitos e a busca "Minhas músicas" quebra.
+    const local = (d.length >= 12 && d.startsWith('55')) ? d.slice(2) : d
     if (local.length <= 2) return `(${local}`
     if (local.length <= 7) return `(${local.slice(0, 2)}) ${local.slice(2)}`
     if (local.length <= 11) return `(${local.slice(0, 2)}) ${local.slice(2, 7)}-${local.slice(7)}`
