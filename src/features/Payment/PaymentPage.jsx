@@ -148,8 +148,11 @@ export default function PaymentPage() {
   const editErr = order.edit_status === 'error'
   // Pode ajustar quem tem prévia, ainda não usou o self-edit e não está em regeneração.
   const canEdit = MSE_ENABLED && !!preview && !order.self_edit_used && !regenerating && !editErr && !pix && !confirming
-  // Enquanto edita/regenera, esconde os planos pra focar no ajuste.
-  const showPlans = !pix && !confirming && !editing && !regenerating
+  // 🔒 SEM PRÉVIA = SEM PAGAMENTO. Só mostra planos/PIX se a prévia existe.
+  // Se a prévia falhou (nunca gerou), mostra mensagem de problema (o backend
+  // também bloqueia o /api/pay/create — trava dupla).
+  const semPrevia = !preview && !regenerating && !editing
+  const showPlans = !!preview && !pix && !confirming && !editing && !regenerating
 
   return (
     <Shell>
@@ -197,6 +200,20 @@ export default function PaymentPage() {
             ✏️ Quero ajustar minha prévia antes de pagar
           </button>
         ) : null}
+
+        {semPrevia && (
+          <section className="pp-section" style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 40, marginBottom: 6 }}>🎧</div>
+            <h2 style={{ justifyContent: 'center' }}>Sua música ainda está sendo preparada</h2>
+            <p className="pp-hint">
+              Tivemos um probleminha e a prévia da sua música ainda não ficou pronta — por isso o pagamento não está liberado ainda.
+              Nossa equipe já foi avisada e vai gerar a sua o quanto antes. Se preferir, fale com a gente que resolvemos rapidinho 💛
+            </p>
+            <a className="pp-btn pp-btn-primary" href="https://wa.me/5511920103970" target="_blank" rel="noreferrer" style={{ marginTop: 12, textDecoration: 'none' }}>
+              Falar com a Bia no WhatsApp
+            </a>
+          </section>
+        )}
 
         {showPlans && (
           <section className="pp-section">

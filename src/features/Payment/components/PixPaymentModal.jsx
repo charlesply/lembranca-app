@@ -159,7 +159,8 @@ export default function PixPaymentModal({
         const j = await r.json()
         if (cancelled) return
         if (!r.ok || !j?.brCode) {
-          setPayError(j?.error || 'Falha ao gerar PIX')
+          // 409 'sem_previa' = música/prévia ainda não pronta → mensagem específica.
+          setPayError(j?.message || (j?.error === 'sem_previa' ? 'A prévia da sua música ainda não ficou pronta.' : j?.error) || 'Falha ao gerar PIX')
           return
         }
         setBrCode(j.brCode)
@@ -265,7 +266,22 @@ export default function PixPaymentModal({
         </p>
         </>}
 
-        {step === 'pay' && <>
+        {step === 'pay' && payError && <div className="pix-state pix-state--review">
+          <div className="pix-state-icon pix-state-icon--review" aria-hidden="true">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
+          <h3>Sua música ainda está sendo preparada</h3>
+          <p>{payError} Assim que a prévia ficar pronta, o pagamento libera aqui. Se demorar, fala com a Bia que a gente resolve rapidinho 💛</p>
+          {onHelpWhatsApp && (
+            <button type="button" className="pix-wa-link" onClick={() => onHelpWhatsApp({ orderId, honoreeName, customerName, customerPhone, context: 'sem_previa' })}>
+              <svg className="pix-wa-link-icon" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.52 3.48A11.84 11.84 0 0 0 12.04 0C5.5 0 .2 5.31.2 11.85c0 2.09.55 4.13 1.6 5.93L0 24l6.39-1.67a11.83 11.83 0 0 0 5.65 1.44h.01c6.54 0 11.84-5.31 11.84-11.85 0-3.17-1.23-6.14-3.47-8.44Zm-8.48 18.22h-.01a9.86 9.86 0 0 1-5.02-1.38l-.36-.21-3.79.99 1.01-3.69-.23-.38a9.83 9.83 0 0 1-1.5-5.18c0-5.43 4.42-9.85 9.86-9.85 2.63 0 5.1 1.03 6.96 2.9a9.79 9.79 0 0 1 2.89 6.96c0 5.44-4.43 9.84-9.81 9.84Z"/></svg>
+              <span>Falar com a Bia no WhatsApp</span>
+            </button>
+          )}
+          <button type="button" className="pix-modal-copy" onClick={onClose} style={{ marginTop: 10 }}>Fechar</button>
+        </div>}
+
+        {step === 'pay' && !payError && <>
         <button type="button" className="pix-step-back" onClick={() => setStep('plan')}>← Trocar plano</button>
         <span className="pix-modal-eyebrow">Pagamento PIX</span>
         <h2 id="pix-modal-title" className="pix-modal-title">Desbloquear música</h2>
