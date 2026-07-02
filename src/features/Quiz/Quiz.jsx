@@ -401,6 +401,7 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
 
   // id do pedido draft no Supabase (persistência incremental)
   const draftOrderIdRef = useRef(initDraft?.draftOrderId || null)
+  const creatingRef = useRef(false)       // trava anti-duplicação: create EM ANDAMENTO
   const lastSavedJsonRef = useRef(null)   // pra evitar mandar PATCH com mesmo payload
 
   // flag: quando o usuário clica "Editar" na review, vamos pra tela específica.
@@ -671,7 +672,11 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
   // criação do draft order: dispara 1x quando temos nome válido + phone OU em qualquer momento depois do contact
   useEffect(() => {
     if (!apiCreateOrder) return
-    if (draftOrderIdRef.current) return
+    // 🔒 Anti-duplicação: se já criou OU se uma criação está EM ANDAMENTO, não
+    // dispara outra. O creatingRef fecha a corrida em que o efeito re-dispara
+    // (mudança de state) ANTES do 1º create resolver e setar o draftOrderIdRef —
+    // era o que gerava vários pedidos iguais no mesmo quiz.
+    if (draftOrderIdRef.current || creatingRef.current) return
     const cleanPhone = (phone || '').replace(/\D/g, '')
     const haveName = rel?.kind === 'child'
       ? (children[0]?.name && !validateName(children[0].name))
@@ -683,6 +688,7 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
     if (!haveName) return
     const _emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((email || '').trim().toLowerCase())
     if ((cleanPhone.length < 10 || !_emailOk) && screen?.type !== 'review') return
+    creatingRef.current = true   // marca EM ANDAMENTO antes do await (fecha a corrida)
     ;(async () => {
       try {
         const fields = buildIncrementalFields()
@@ -705,8 +711,10 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
         if (r && r.orderId) {
           draftOrderIdRef.current = r.orderId
           saveDraft({ si, relId: rel?.id, honoree, count, children, traits, open1, open2, exTone, team, occasion, feeling, genre, mood, voice, clientName, phone, email, draftOrderId: r.orderId })
+        } else {
+          creatingRef.current = false   // não criou → libera pra tentar de novo
         }
-      } catch (_) {}
+      } catch (_) { creatingRef.current = false }
     })()
   }, [phone, honoree, children, rel, screen?.type, apiCreateOrder, buildIncrementalFields, si, traits, open1, open2, exTone, team, genre, mood, voice, clientName, email, count])
 
