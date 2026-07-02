@@ -676,9 +676,13 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
     const haveName = rel?.kind === 'child'
       ? (children[0]?.name && !validateName(children[0].name))
       : (honoree && !validateName(honoree))
-    // só cria quando tem nome E (já passou pela tela de contato OU já temos telefone preenchido)
+    // só cria quando tem nome + telefone + EMAIL VÁLIDO. Antes o create disparava
+    // assim que o telefone chegava a 10 dígitos (ANTES do e-mail ser digitado), e
+    // a sincronização debounced do e-mail às vezes se perdia → ~0,1% dos pedidos
+    // nasciam sem customer_email. Exigir e-mail válido garante o campo sempre.
     if (!haveName) return
-    if (cleanPhone.length < 10 && screen?.type !== 'review') return
+    const _emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((email || '').trim().toLowerCase())
+    if ((cleanPhone.length < 10 || !_emailOk) && screen?.type !== 'review') return
     ;(async () => {
       try {
         const fields = buildIncrementalFields()
