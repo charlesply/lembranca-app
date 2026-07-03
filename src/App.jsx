@@ -2040,6 +2040,12 @@ export default function App() {
         const has_dev = _devError || _devOrders || _devResult || _devProgress != null
         const has_local_resume = !!(loadCurrentOrder() && loadCurrentOrder().id)
         if (has_dev || has_local_resume) return
+        // 🔒 Só auto-pula pro "Desbloquear" quando o cliente tem UM ÚNICO pedido e
+        // ele é uma prévia não-paga (abandonou o pagamento). Se tem QUALQUER pedido
+        // PAGO ou mais de um pedido → NÃO pula: mostra a LISTA (Minhas Músicas), pra
+        // ele VER os pedidos que fez. (Bug: cliente com música paga + uma prévia caía
+        // direto no pagamento da prévia em vez de ver a música paga.)
+        if (real.some(o => o.paid_at) || real.length > 1) return
         const unpaid = real.filter(o => o.preview_audio_url && !o.paid_at)
         const recent = unpaid.filter(o => {
           const ageMs = Date.now() - new Date(o.created_at).getTime()
