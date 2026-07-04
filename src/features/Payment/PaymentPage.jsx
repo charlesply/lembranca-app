@@ -206,12 +206,8 @@ export default function PaymentPage() {
             <div style={{ fontSize: 40, marginBottom: 6 }}>🎧</div>
             <h2 style={{ justifyContent: 'center' }}>Sua música ainda está sendo preparada</h2>
             <p className="pp-hint">
-              Tivemos um probleminha e a prévia da sua música ainda não ficou pronta — por isso o pagamento não está liberado ainda.
-              Nossa equipe já foi avisada e vai gerar a sua o quanto antes. Se preferir, fale com a gente que resolvemos rapidinho 💛
+              Estamos finalizando a prévia da sua música — assim que ficar pronta, o pagamento libera aqui automaticamente. É rapidinho 💛
             </p>
-            <a className="pp-btn pp-btn-primary" href="https://wa.me/5511920103970" target="_blank" rel="noreferrer" style={{ marginTop: 12, textDecoration: 'none' }}>
-              Falar com a Bia no WhatsApp
-            </a>
           </section>
         )}
 

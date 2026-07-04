@@ -271,13 +271,7 @@ export default function PixPaymentModal({
             <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           </div>
           <h3>Sua música ainda está sendo preparada</h3>
-          <p>{payError} Assim que a prévia ficar pronta, o pagamento libera aqui. Se demorar, fala com a Bia que a gente resolve rapidinho 💛</p>
-          {onHelpWhatsApp && (
-            <button type="button" className="pix-wa-link" onClick={() => onHelpWhatsApp({ orderId, honoreeName, customerName, customerPhone, context: 'sem_previa' })}>
-              <svg className="pix-wa-link-icon" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.52 3.48A11.84 11.84 0 0 0 12.04 0C5.5 0 .2 5.31.2 11.85c0 2.09.55 4.13 1.6 5.93L0 24l6.39-1.67a11.83 11.83 0 0 0 5.65 1.44h.01c6.54 0 11.84-5.31 11.84-11.85 0-3.17-1.23-6.14-3.47-8.44Zm-8.48 18.22h-.01a9.86 9.86 0 0 1-5.02-1.38l-.36-.21-3.79.99 1.01-3.69-.23-.38a9.83 9.83 0 0 1-1.5-5.18c0-5.43 4.42-9.85 9.86-9.85 2.63 0 5.1 1.03 6.96 2.9a9.79 9.79 0 0 1 2.89 6.96c0 5.44-4.43 9.84-9.81 9.84Z"/></svg>
-              <span>Falar com a Bia no WhatsApp</span>
-            </button>
-          )}
+          <p>Estamos finalizando sua prévia — assim que ficar pronta, o pagamento libera aqui automaticamente. É rapidinho 💛</p>
           <button type="button" className="pix-modal-copy" onClick={onClose} style={{ marginTop: 10 }}>Fechar</button>
         </div>}
 
@@ -439,22 +433,6 @@ export default function PixPaymentModal({
           <button type="button" className="pix-modal-copy" onClick={() => { setFile(null); setProofResp(null); setStep('upload') }}>
             Enviar outro comprovante
           </button>
-          {onHelpWhatsApp && (
-            <button type="button" className="pix-wa-link"
-              onClick={() => onHelpWhatsApp({
-                orderId, honoreeName, customerName, customerPhone,
-                reasons: proofResp?.reasons || [],
-                context: 'rejected',
-              })}>
-              <svg className="pix-wa-link-icon" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M20.52 3.48A11.84 11.84 0 0 0 12.04 0C5.5 0 .2 5.31.2 11.85c0 2.09.55 4.13 1.6 5.93L0 24l6.39-1.67a11.83 11.83 0 0 0 5.65 1.44h.01c6.54 0 11.84-5.31 11.84-11.85 0-3.17-1.23-6.14-3.47-8.44Zm-8.48 18.22h-.01a9.86 9.86 0 0 1-5.02-1.38l-.36-.21-3.79.99 1.01-3.69-.23-.38a9.83 9.83 0 0 1-1.5-5.18c0-5.43 4.42-9.85 9.86-9.85 2.63 0 5.1 1.03 6.96 2.9a9.79 9.79 0 0 1 2.89 6.96c0 5.44-4.43 9.84-9.81 9.84Zm5.4-7.37c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.95 1.17-.17.2-.35.22-.65.07-.3-.15-1.25-.46-2.38-1.47-.88-.79-1.47-1.76-1.64-2.05-.17-.3-.02-.45.13-.6.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51-.17-.01-.37-.01-.57-.01-.2 0-.52.07-.8.37-.27.3-1.05 1.02-1.05 2.49 0 1.47 1.08 2.89 1.23 3.09.15.2 2.12 3.24 5.13 4.54.72.31 1.28.5 1.72.64.72.23 1.38.2 1.9.12.58-.09 1.76-.72 2.01-1.41.25-.7.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35Z"/>
-              </svg>
-              <span>Falar com a Bia no WhatsApp</span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="pix-wa-link-arrow">
-                <polyline points="9 18 15 12 9 6"/>
-              </svg>
-            </button>
-          )}
         </div>}
       </div>
     </div>,
