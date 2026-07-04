@@ -652,58 +652,11 @@ const RESULT_TESTIMONIALS = [
   { title: 'Minha vida com você',  duration: '3:21', author: 'Ricardo M.', quote: 'Ela se emocionou ouvindo. Nunca vou esquecer esse momento.', src: '/assets/musicas/m3.mp3' },
 ]
 
-/* ══════════════════════════════════════════════════════════════
-   PIX PAYMENT MODAL · pagamento PIX manual (sem InfinitePay)
-   ── Inspirado na referência enviada · QR + chave + botão copiar.
-   ══════════════════════════════════════════════════════════════ */
-// Chave Pix do recebedor (e-mail). Conta é da NIKELSON DA SILVA — é o nome que
-// aparece no app do banco do cliente quando ele cola o código Pix. O Merchant
-// Name no BR Code precisa estar em CAIXA ALTA, sem acentos, ≤25 chars.
-const PIX_KEY = 'pix.historiascantadas@gmail.com'
-const PIX_KEY_LABEL = 'pix.historiascantadas@gmail.com'  // já é o formato bonito
-const PIX_MERCHANT_NAME = 'NIKELSON DA SILVA'  // titular da conta — aparece no banco do cliente
-const PIX_MERCHANT_CITY = 'SAO PAULO'
+/* PIX manual (gerador de BR Code com chave de terceiro) REMOVIDO —
+   o pagamento é 100% via AbacatePay/backend (PixPaymentModal usa o brCode do backend). */
 
 // PLAN_DETAILS agora vem de ./features/Payment (Fase A pós-merge)
 // fmtBRL agora vem de ./core/utils (refactor Fase 1)
-
-/* CRC16-CCITT-FALSE · necessário no fim do BR Code (campo 63 da spec EMV) */
-function pixCrc16(str) {
-  let crc = 0xFFFF
-  for (let i = 0; i < str.length; i++) {
-    crc ^= (str.charCodeAt(i) & 0xFF) << 8
-    for (let j = 0; j < 8; j++) {
-      crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) : (crc << 1)
-      crc &= 0xFFFF
-    }
-  }
-  return crc.toString(16).toUpperCase().padStart(4, '0')
-}
-
-/* Gera o BR Code PIX (EMV) — quando o cliente escaneia esse QR no banco,
-   chave + valor + recebedor já vêm preenchidos. Bem mais fácil que digitar.
-   Spec: https://www.bcb.gov.br/content/estabilidadefinanceira/forumpireunioes/Anexo_I-ManualBRCode.pdf */
-function pixBRCode({ key, amount, name = PIX_MERCHANT_NAME, city = PIX_MERCHANT_CITY, txid = '***' }) {
-  const f = (id, v) => id + String(v.length).padStart(2, '0') + v
-  // Sanitiza nome/city: ASCII uppercase, sem acentos, com limite EMV
-  const norm = (s, max) => s.normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .toUpperCase().slice(0, max)
-  const merchantAccountInfo = f('00', 'br.gov.bcb.pix') + f('01', key)
-  const additionalData = f('05', txid || '***')
-  const amountStr = (amount != null) ? Number(amount).toFixed(2) : null
-  let payload =
-    f('00', '01') +                               // Payload Format Indicator
-    f('26', merchantAccountInfo) +                // Merchant Account Information (PIX)
-    f('52', '0000') +                             // MCC
-    f('53', '986') +                              // Moeda (BRL)
-    (amountStr ? f('54', amountStr) : '') +       // Valor (opcional)
-    f('58', 'BR') +                               // País
-    f('59', norm(name, 25)) +                     // Nome do recebedor (max 25)
-    f('60', norm(city, 15)) +                     // Cidade (max 15)
-    f('62', additionalData) +                     // Dados adicionais (TXID)
-    '6304'                                        // Sufixo do CRC
-  return payload + pixCrc16(payload)
-}
 
 // Constrói uma mensagem rica pro cliente abrir no WhatsApp da Bia + dispara
 // um ping pro backend, que (1) salva o pedido de ajuda no proof_ai_data e
@@ -2160,7 +2113,7 @@ export default function App() {
   }
   const closePixModal = () => setPixModal(null)
   const BIA_PHONE = '5511920933097'
-  const INSTAGRAM = 'https://instagram.com/historiascantadasbr'
+  const INSTAGRAM = 'https://instagram.com/lembrancacantada'
   const WHATSAPP = `https://wa.me/${'5511920933097'}`
   const lastScrollY = useRef(0)
   const headerRef = useRef(null)
@@ -3388,7 +3341,7 @@ export default function App() {
     { title: 'Empresa', links: [
       { label: 'Sobre nós', href: '#how' },
       { label: 'Contato',   href: `https://wa.me/${'5511920933097'}`, external: true },
-      { label: 'Instagram', href: 'https://instagram.com/historiascantadasbr', external: true },
+      { label: 'Instagram', href: 'https://instagram.com/lembrancacantada', external: true },
       { label: 'WhatsApp',  href: `https://wa.me/${'5511920933097'}`, external: true },
     ]},
     { title: 'Legal', links: [

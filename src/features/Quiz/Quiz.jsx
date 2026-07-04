@@ -1234,9 +1234,6 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
             </button>
           </div>
         )}
-        {screen?.type === 'relationship' && (
-          <button type="button" className="quiz-chat-link" onClick={onChat}>prefiro conversar 💬</button>
-        )}
       </div>
     </div>
   )

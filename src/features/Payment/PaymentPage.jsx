@@ -233,6 +233,11 @@ export default function PaymentPage() {
             <button className="pp-btn pp-btn-primary" onClick={generatePix} disabled={loadingPix}>
               {loadingPix ? 'Gerando PIX…' : `Gerar PIX de R$ ${(PLANS.find(p => p.key === plan)?.price || 0).toFixed(2).replace('.', ',')}`}
             </button>
+            <p style={{ fontSize: '12px', color: '#8a7969', textAlign: 'center', marginTop: '10px', lineHeight: 1.4 }}>
+              Ao gerar o PIX e pagar, você concorda com os{' '}
+              <a href="/termos.html" target="_blank" rel="noopener noreferrer" style={{ color: '#CC785C', textDecoration: 'underline' }}>Termos de Uso</a>,
+              incluindo que é um produto personalizado, ouvido em prévia gratuita antes da compra.
+            </p>
           </section>
         )}
 
