@@ -3071,9 +3071,15 @@ export default function App() {
       pushBubble({ kind: 'download', src: full, label: 'Baixar MP3', file: 'musica.mp3' })
     }
     if (ctx.plan === 'completa') {
-      // PREMIUM: o vídeo é PERSONALIZADO (com a foto) e vem DEPOIS do upload
-      await biaSay('Você escolheu o *vídeo personalizado com foto* 😍 Me manda a *foto* que você quer na capa que eu já monto o seu vídeo 🎬')
-      pushBubble({ kind: 'photo', orderId })
+      // vídeo é o brinde karaokê (imagem do Pexels por relação/idade, automático) — NÃO pede foto
+      const bvid = row && row.video_brinde_url
+      if (bvid) {
+        await biaSay('E o seu *vídeo karaokê* pra cantar e postar nas redes 🎬')
+        pushBubble({ kind: 'video', src: bvid })
+        pushBubble({ kind: 'download', src: bvid, label: 'Baixar vídeo', file: 'video.mp4' })
+      } else {
+        await biaSay('Seu *vídeo karaokê* já está sendo preparado — em uns minutinhos ele chega no seu e-mail 🎬💜')
+      }
     } else {
       const video = row && row.video_brinde_url
       // Vídeo só vem se o cliente comprou o plano completo (R$ 29,90).
