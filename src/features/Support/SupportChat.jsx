@@ -239,11 +239,9 @@ export default function SupportChat() {
           <span style={{ position: 'relative', width: 42, height: 42, flex: '0 0 auto' }}>
             <img src="/assets/Bia.jpeg" alt="Bia" style={{ width: 42, height: 42, borderRadius: '50%', objectFit: 'cover' }}
               onError={e => { e.currentTarget.style.display = 'none' }} />
-            <span style={{ position: 'absolute', right: 0, bottom: 2, width: 11, height: 11, borderRadius: '50%', background: '#22c55e', border: '2px solid #fff' }} />
           </span>
           <span style={{ textAlign: 'left', lineHeight: 1.2 }}>
             <span style={{ display: 'block', fontWeight: 700, fontSize: 14, color: '#1C1917' }}>Falar com a Bia</span>
-            <span style={{ display: 'block', fontSize: 11.5, color: '#16a34a', fontWeight: 600 }}>online · responde na hora</span>
           </span>
         </button>
       )}
@@ -261,11 +259,9 @@ export default function SupportChat() {
             <span style={{ position: 'relative', width: 38, height: 38 }}>
               <img src="/assets/Bia.jpeg" alt="Bia" style={{ width: 38, height: 38, borderRadius: '50%', objectFit: 'cover' }}
                 onError={e => { e.currentTarget.style.display = 'none' }} />
-              <span style={{ position: 'absolute', right: -1, bottom: 1, width: 10, height: 10, borderRadius: '50%', background: '#22c55e', border: '2px solid #fff' }} />
             </span>
             <div style={{ flex: 1, lineHeight: 1.25 }}>
               <div style={{ fontWeight: 700, fontSize: 15 }}>Bia · Lembrança Cantada</div>
-              <div style={{ fontSize: 11.5, opacity: .9 }}>Atendimento · responde na hora</div>
             </div>
             <button onClick={() => setOpen(false)} aria-label="Fechar"
               style={{ background: 'rgba(255,255,255,.18)', border: 'none', color: '#fff', width: 30, height: 30, borderRadius: 8, cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
