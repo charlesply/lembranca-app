@@ -37,6 +37,15 @@ function drawVariant() {
 // Lê (ou atribui na 1ª vez) a variante de preço do visitante. Persiste sempre.
 export function getPriceVariant() {
   try {
+    // 🧪 Override por URL — SÓ no staging (blindado por hostname pra NUNCA virar
+    // backdoor de preço em produção). Ex: ?pv=control | p37 | p47 | p67
+    if (typeof window !== 'undefined' && /(^|\.)staging\./.test(window.location.hostname)) {
+      const pv = new URLSearchParams(window.location.search).get('pv')
+      if (pv === 'control' || pv === 'p37' || pv === 'p47' || pv === 'p67') {
+        try { localStorage.setItem(PRICE_VARIANT_KEY, pv) } catch (_) {}
+        return pv
+      }
+    }
     const cur = localStorage.getItem(PRICE_VARIANT_KEY)
     if (cur === 'control' || cur === 'p37' || cur === 'p47' || cur === 'p67') return cur
     const v = drawVariant()
