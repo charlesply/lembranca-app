@@ -1216,6 +1216,11 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
             ✏️ Quero ajustar minha {o.paid_at ? 'música' : 'prévia'}
           </button>
         ) : null}
+
+        <p style={{ textAlign: 'center', fontSize: 13, color: '#a8a29e', margin: '20px 0 0', lineHeight: 1.5 }}>
+          Precisa de ajuda? Fale com a gente:{' '}
+          <a href="mailto:suporte@lembrancacantada.com" style={{ color: '#C96240', textDecoration: 'underline' }}>suporte@lembrancacantada.com</a>
+        </p>
       </div>
     )
   }
@@ -1272,6 +1277,10 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
               + Criar outra música
             </button>
           </div>
+          <p style={{ textAlign: 'center', fontSize: 13, color: '#a8a29e', margin: '18px 0 0', lineHeight: 1.5 }}>
+            Precisa de ajuda? Fale com a gente:{' '}
+            <a href="mailto:suporte@lembrancacantada.com" style={{ color: '#C96240', textDecoration: 'underline' }}>suporte@lembrancacantada.com</a>
+          </p>
         </>
       )}
     </div>
@@ -3499,10 +3508,7 @@ export default function App() {
 
   return (
     <>
-      {/* ANNOUNCEMENT BAR */}
-      {view === 'landing' && (
-        <LandingTopbar offerEnd={offerEnd} onScrollToForm={scrollToForm} />
-      )}
+      {/* ANNOUNCEMENT BAR removido — funil sem preço/oferta antes da prévia. */}
 
       {/* Banner cliente recorrente — só aparece se a gente já tem o cliente
           salvo no localStorage E ele tem ≥1 música real (prévia ou paga).
@@ -3896,66 +3902,9 @@ export default function App() {
           {/* ═══ DEPOIMENTOS ═══ */}
           <TestimonialsSection />
 
-          {/* ═══ OFERTA / ANCORAGEM DE VALOR ═══ */}
-          <section className="offer-section">
-            <div className="container offer-grid">
-              <div className="offer-card">
-                <Pill tone="accent">COMPARA COMIGO</Pill>
-                <div className="compare-rows">
-                  <div className="compare-row">
-                    <div className="compare-ic" aria-hidden="true">
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12 22V12"/><path d="M12 12c0-3 2-5 5-5s5 2 5 5-2 5-5 5h-5"/><path d="M12 12c0-3-2-5-5-5s-5 2-5 5 2 5 5 5h5"/><circle cx="12" cy="22" r="0.5"/>
-                      </svg>
-                    </div>
-                    <div className="compare-text">
-                      <div className="compare-name">Buquê + chocolate</div>
-                      <div className="compare-sub">dura 3 dias</div>
-                    </div>
-                    <div className="compare-price old">R$ 180</div>
-                  </div>
-                  <div className="compare-row">
-                    <div className="compare-ic" aria-hidden="true">
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M3 11h18"/><path d="M5 11V9a7 7 0 0 1 14 0v2"/><path d="M3 11v2a7 7 0 0 0 14 0v-2"/><path d="M12 18v3"/><path d="M8 21h8"/>
-                      </svg>
-                    </div>
-                    <div className="compare-text">
-                      <div className="compare-name">Jantar especial</div>
-                      <div className="compare-sub">acaba em 2h</div>
-                    </div>
-                    <div className="compare-price old">R$ 250</div>
-                  </div>
-                  <div className="compare-row win">
-                    <span className="compare-badge"><Badge tone="accent">A NOSSA</Badge></span>
-                    <div className="compare-ic compare-ic-win" aria-hidden="true">
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
-                      </svg>
-                    </div>
-                    <div className="compare-text">
-                      <div className="compare-name">Música personalizada</div>
-                      <div className="compare-sub">dura pra sempre</div>
-                    </div>
-                    <div className="compare-price">a partir de <strong>R$ 19,90</strong></div>
-                  </div>
-                </div>
-                <p className="offer-anchor-note">O presente que custa menos e é o único que <strong>dura pra vida toda</strong>.</p>
-              </div>
+          {/* ═══ OFERTA / ANCORAGEM DE VALOR ═══ (removido — sem preço/oferta/countdown antes da prévia) */}
 
-              <div className="offer-cta-col">
-                <div className="offer-eyebrow">por apenas</div>
-                <div className="offer-price"><span className="offer-cur">R$</span><span className="offer-int">19</span><span className="offer-cents">,90</span></div>
-                <div className="offer-parcel">à vista no Pix</div>
-                <Countdown end={offerEnd} />
-                <button className="btn-primary offer-cta" onClick={scrollToForm}><IconGift s={18} /> Criar a minha música agora <IconArrowRight s={17} /></button>
-                <div className="offer-note"><IconLock s={13} /> Prévia grátis · você ouve aqui no chat · só paga se gostar</div>
-              </div>
-            </div>
-          </section>
-
-          {/* ═══ PLANOS ═══ */}
-          <PlansSection onScrollToForm={scrollToForm} />
+          {/* ═══ PLANOS ═══ (removido — planos/preços só a partir da prévia/checkout) */}
 
           {/* ═══ FAQ ═══ */}
           <FaqSection

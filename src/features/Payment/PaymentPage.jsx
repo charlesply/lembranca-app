@@ -13,13 +13,14 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { fetchOrderStatus, createPix } from './api/paymentService'
 import { usePixPolling } from './hooks/usePixPolling'
+import { getPriceVariant, isTestVariant, TEST_VARIANTS } from './constants'
 // Self-edit: cliente ajusta a própria prévia (1×) antes de pagar — mesmo componente
 // usado em Minhas Músicas / DeliveryPage.
 import { MusicSelfEdit, MSE_ENABLED } from '../../components/MusicSelfEdit'
 
 // Ordem importa: o primeiro fica em cima na UI. Completa e o destaque (badge
 // "Mais escolhido") e o default pre-selecionado.
-const PLANS = [
+const CONTROL_PLANS = [
   {
     key: 'completa',
     label: 'Música + Vídeo (estilo Spotify)',
@@ -36,12 +37,32 @@ const PLANS = [
   },
 ]
 
+// Monta a lista de planos exibida conforme a variante do teste A/B.
+// Teste (p37/p47/p67): plano ÚNICO música-only + 1 edição incluída, SEM vídeo.
+function plansForVariant(variant) {
+  if (isTestVariant(variant)) {
+    const cfg = TEST_VARIANTS[variant]
+    return [{
+      key: cfg.planKey,
+      label: 'Música personalizada',
+      price: cfg.price,
+      badge: null,
+      detail: '2 versões da música em alta qualidade + 1 edição incluída caso queira ajustar a música',
+    }]
+  }
+  return CONTROL_PLANS
+}
+
 export default function PaymentPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [order, setOrder] = useState(null)
   const [err, setErr] = useState(null)
-  const [plan, setPlan] = useState('completa')
+  // Variante do teste A/B de preço — atribuída 1× por visitante (localStorage).
+  const [priceVariant] = useState(() => getPriceVariant())
+  const PLANS = plansForVariant(priceVariant)
+  // Default: control pré-seleciona 'completa'; teste tem plano único.
+  const [plan, setPlan] = useState(() => plansForVariant(priceVariant)[0].key)
   const [pix, setPix] = useState(null)
   const [loadingPix, setLoadingPix] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -114,7 +135,7 @@ export default function PaymentPage() {
     if (!id) return
     setLoadingPix(true); setPix(null); setCopied(false)
     try {
-      const data = await createPix(id, plan)
+      const data = await createPix(id, plan, priceVariant)
       if (!data?.brCode) throw new Error('falha')
       setPix({ brCode: data.brCode, brCodeBase64: data.brCodeBase64, expiresAt: data.expiresAt })
     } catch (e) {
@@ -122,7 +143,7 @@ export default function PaymentPage() {
     } finally {
       setLoadingPix(false)
     }
-  }, [id, plan])
+  }, [id, plan, priceVariant])
 
   const copyPix = async () => {
     if (!pix?.brCode) return

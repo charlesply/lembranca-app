@@ -12,7 +12,7 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { fmtBRL } from '../../../core/utils'
 import { API_URL } from '../../../core/infra'
-import { PLAN_DETAILS } from '../constants'
+import { PLAN_DETAILS, getPriceVariant, isTestVariant, TEST_VARIANTS } from '../constants'
 import { submitPaymentProof, checkPaymentStatus } from '../api/paymentService'
 import { fetchOrderStatus } from '../api/paymentService'
 
@@ -23,9 +23,14 @@ export default function PixPaymentModal({
   const [copied, setCopied] = useState(false)
   // 'plan' = escolha do plano · 'pay' = QR · 'upload' = comprovante · 'sending' · 'success' · 'review' · 'rejected'
   const [step, setStep] = useState('plan')
+  // Variante do teste A/B de preço — atribuída 1× por visitante (localStorage).
+  const [priceVariant] = useState(() => getPriceVariant())
+  const testVariant = isTestVariant(priceVariant)
+  const testCfg = testVariant ? TEST_VARIANTS[priceVariant] : null
   // selectedPlan vive DENTRO do modal pra permitir o usuario trocar de plano
   // na tela 0 sem precisar reabrir. O prop planKey vira o default inicial.
-  const [selectedPlan, setSelectedPlan] = useState(planKey)
+  // No teste A/B o plano é ÚNICO (o planKey do teste), sem escolha.
+  const [selectedPlan, setSelectedPlan] = useState(testVariant ? testCfg.planKey : planKey)
   const [file, setFile] = useState(null)
   const [filePreview, setFilePreview] = useState(null)
   const [proofResp, setProofResp] = useState(null)
@@ -36,7 +41,9 @@ export default function PixPaymentModal({
   // alternar pro app do banco e voltar — não pode fechar o modal).
   useEffect(() => {
     if (!open) return
-    setStep(startAt || 'plan'); setSelectedPlan(planKey); setFile(null); setFilePreview(null); setProofResp(null)
+    // Teste A/B: no test variant, começa direto no pagamento (plano único) e força o planKey do teste.
+    const initialPlan = testVariant ? testCfg.planKey : planKey
+    setStep(testVariant ? 'pay' : (startAt || 'plan')); setSelectedPlan(initialPlan); setFile(null); setFilePreview(null); setProofResp(null)
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = prev }
@@ -154,7 +161,7 @@ export default function PixPaymentModal({
         const r = await fetch(`${API_URL}/api/pay/create`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orderId, plan: selectedPlan }),
+          body: JSON.stringify({ orderId, plan: selectedPlan, priceVariant }),
         })
         const j = await r.json()
         if (cancelled) return
@@ -219,7 +226,7 @@ export default function PixPaymentModal({
       <button type="button" className="pix-modal-close" onClick={onClose} aria-label="Fechar">✕</button>
       <div className="pix-modal-card">
 
-        {step === 'plan' && <>
+        {step === 'plan' && !testVariant && <>
         <span className="pix-modal-eyebrow">Escolha o plano</span>
         <h2 className="pix-modal-title">
           {honoreeName ? <>Sua música pra <em>{honoreeName}</em></> : 'Sua música'}
@@ -276,9 +283,15 @@ export default function PixPaymentModal({
         </div>}
 
         {step === 'pay' && !payError && <>
-        <button type="button" className="pix-step-back" onClick={() => setStep('plan')}>← Trocar plano</button>
+        {!testVariant && <button type="button" className="pix-step-back" onClick={() => setStep('plan')}>← Trocar plano</button>}
         <span className="pix-modal-eyebrow">Pagamento PIX</span>
         <h2 id="pix-modal-title" className="pix-modal-title">Desbloquear música</h2>
+
+        {testVariant && (
+          <p className="pix-plan-sub" style={{ margin: '0 0 10px' }}>
+            Música personalizada · 2 versões da música + 1 edição incluída caso queira ajustar.
+          </p>
+        )}
 
         <div className="pix-modal-amount-card">
           <span className="pix-modal-amount-label">Valor único</span>
@@ -392,7 +405,9 @@ export default function PixPaymentModal({
             <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
           <h3>Pagamento aprovado!</h3>
-          <p>Sua música completa e o vídeo já estão liberados pra baixar.</p>
+          <p>{selectedPlan === 'completa'
+            ? 'Sua música completa e o vídeo já estão liberados pra baixar.'
+            : 'Sua música completa já está liberada pra baixar.'}</p>
           <button type="button" className="pix-modal-copy" onClick={onClose}>Ver minha música</button>
         </div>}
 

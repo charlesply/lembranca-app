@@ -1128,7 +1128,7 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
         return (
           <>
             <h2 className="quiz-q">Falta pouquinho! Quem é você?</h2>
-            <p className="quiz-hint">A gente te avisa aqui no site quando sua música ficar pronta — e manda um link no seu e-mail pra você ouvir sempre que quiser. 💌</p>
+            <p className="quiz-hint">A gente te avisa aqui no site quando sua música ficar pronta — e manda a música no seu e-mail pra você ouvir sempre que quiser. 💌</p>
             <label className="quiz-label">Seu nome e sobrenome</label>
             <div className="input-wrapper">
               <span className="input-icon" aria-hidden="true">👤</span>

@@ -7,8 +7,9 @@ export async function fetchOrderStatus(id) {
 }
 
 // Cria PIX vinculado ao orderId. Retorna { brCode, brCodeBase64, expiresAt }.
-export async function createPix(orderId, plan) {
-  return apiPost('/api/pay/create', { orderId, plan }, { retries: 2 })
+// priceVariant (lc_price_variant) vai junto pra medir conversão do teste A/B.
+export async function createPix(orderId, plan, priceVariant) {
+  return apiPost('/api/pay/create', { orderId, plan, priceVariant }, { retries: 2 })
 }
 
 // Polling de status de pagamento. Retorna { paid, status, abacate_status }.
