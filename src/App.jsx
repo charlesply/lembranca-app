@@ -1297,19 +1297,12 @@ function PreviewResultView({ resultData, onBuy, onWhatsApp, onNew, payLoading })
   // usuário termina de ouvir a prévia (ponto natural de conversão).
   const lockedCardRef = useRef(null)
   const handlePreviewEnd = () => {
-    if (resultData?.unlocked) return  // já comprou, sem scroll
-    // Pequeno delay pra evitar conflito com a animação de pause do player
-    setTimeout(() => {
-      const el = lockedCardRef.current
-      if (!el) return
-      try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }) } catch (_) {
-        // fallback pra browsers antigos
-        el.scrollIntoView()
-      }
-      // Highlight visual breve no card pra puxar o olho
-      el.classList.add('locked-card--just-scrolled')
-      setTimeout(() => el.classList.remove('locked-card--just-scrolled'), 2400)
-    }, 350)
+    if (resultData?.unlocked) return  // já comprou, sem popup
+    // Ao bater os 0:50, abre DIRETO o popup de pagamento (Pix / escolha de plano
+    // no teste A/B) — ponto natural de conversão, sem depender de scroll.
+    if (onBuy && resultData?.orderId) {
+      setTimeout(() => { try { onBuy(resultData.orderId) } catch (_) {} }, 300)
+    }
   }
 
   return (
@@ -1352,6 +1345,7 @@ function PreviewResultView({ resultData, onBuy, onWhatsApp, onNew, payLoading })
                       onPlayingChange={setPlaying}
                       onPreviewEnd={handlePreviewEnd}
                       maxSec={previewLimit}
+                      fullSec={fullDuration}
                       label="Ouça os primeiros segundos" />
                   : (
                     <p className="preview-card-error">
@@ -1531,7 +1525,7 @@ function PreviewResultView({ resultData, onBuy, onWhatsApp, onNew, payLoading })
                 <strong className="locked-card-title">Bloqueada — libere agora</strong>
                 <ul className="locked-card-list">
                   <li><span aria-hidden="true">♫</span> Música completa em mp3</li>
-                  <li><span aria-hidden="true">▶</span> Vídeo com a letra na tela</li>
+                  <li><span aria-hidden="true">♫</span> 2 versões da mesma letra</li>
                   <li><span aria-hidden="true">⬇</span> Download imediato após o pagamento</li>
                 </ul>
               </div>
@@ -1543,7 +1537,7 @@ function PreviewResultView({ resultData, onBuy, onWhatsApp, onNew, payLoading })
               <span className="locked-card-cta-shine" aria-hidden="true" />
             </button>
             <p className="locked-card-foot">
-              R$ 19,90 ou R$ 29,90 · Pix · liberação imediata
+              Pix · liberação imediata
             </p>
           </article>
         )}
@@ -1591,7 +1585,7 @@ function PreviewResultView({ resultData, onBuy, onWhatsApp, onNew, payLoading })
    Avisa o pai quando playing muda pra girar o disco de vinil.
    onPreviewEnd dispara UMA VEZ quando a prévia termina (no clamp ou no fim do
    áudio) — usado pra fazer auto-scroll até o card de desbloquear. */
-function BigPlayer({ src, maxSec, label, onPlayingChange, onPreviewEnd }) {
+function BigPlayer({ src, maxSec, fullSec, label, onPlayingChange, onPreviewEnd }) {
   const audioRef = useRef(null)
   const [playing, setPlaying] = useState(false)
   const [t, setT] = useState(0)
@@ -1605,8 +1599,9 @@ function BigPlayer({ src, maxSec, label, onPlayingChange, onPreviewEnd }) {
     if (!maxSec) return
     if (t >= maxSec) {
       const a = audioRef.current
-      if (a) { a.pause(); a.currentTime = 0 }
-      setPlaying(false); setT(0)
+      if (a) { a.pause() }
+      // Para no marcador (não volta pro 0) — a barra fica cheia até 0:50.
+      setPlaying(false); setT(maxSec)
       // Dispara onPreviewEnd uma única vez por reprodução completa
       if (!endedFiredRef.current) {
         endedFiredRef.current = true
@@ -1621,14 +1616,21 @@ function BigPlayer({ src, maxSec, label, onPlayingChange, onPreviewEnd }) {
     const a = audioRef.current
     if (!a) return
     if (playing) { a.pause(); setPlaying(false) }
-    else { a.play().then(() => setPlaying(true)).catch(() => {}) }
+    else {
+      // Se parou no fim da prévia (0:50), recomeça do 0.
+      if (maxSec && a.currentTime >= maxSec - 0.3) { a.currentTime = 0; setT(0) }
+      a.play().then(() => setPlaying(true)).catch(() => {})
+    }
   }
   const seek = (e) => {
     const a = audioRef.current
     if (!a || !dur) return
     const rect = e.currentTarget.getBoundingClientRect()
     const pct = (e.clientX - rect.left) / rect.width
-    const target = Math.max(0, Math.min((maxSec || dur), pct * (maxSec || dur)))
+    // A barra é escalada pela música COMPLETA, mas a reprodução é limitada à
+    // prévia (maxSec) — não dá pra ouvir além dos 0:50 sem pagar.
+    const lim = maxSec || dur
+    const target = Math.max(0, Math.min(lim, pct * (fullSec || maxSec || dur)))
     a.currentTime = target
   }
   const fmt = (s) => {
@@ -1636,8 +1638,10 @@ function BigPlayer({ src, maxSec, label, onPlayingChange, onPreviewEnd }) {
     const m = Math.floor(s / 60), sec = Math.floor(s % 60)
     return `${m}:${String(sec).padStart(2, '0')}`
   }
-  const cap = maxSec || dur
-  const pct = cap > 0 ? Math.min(100, (t / cap) * 100) : 0
+  // Escala da barra = música COMPLETA (fullSec); a prévia toca só até maxSec.
+  const scale = fullSec || maxSec || dur || 0
+  const pct = scale > 0 ? Math.min(100, (t / scale) * 100) : 0
+  const markerPct = (maxSec && scale) ? Math.min(100, (maxSec / scale) * 100) : null
 
   return (
     <div className="big-player">
@@ -1649,14 +1653,18 @@ function BigPlayer({ src, maxSec, label, onPlayingChange, onPreviewEnd }) {
             ? <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
             : <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>}
         </button>
-        <div className="big-player-bar" onClick={seek}
-          role="slider" aria-valuemin={0} aria-valuemax={Math.round(cap)} aria-valuenow={Math.round(t)}>
+        <div className="big-player-bar" onClick={seek} style={{ position: 'relative' }}
+          role="slider" aria-valuemin={0} aria-valuemax={Math.round(scale)} aria-valuenow={Math.round(t)}>
           <div className="big-player-fill" style={{ width: `${pct}%` }} />
+          {markerPct != null && (
+            <span aria-hidden="true" title={`Prévia até ${fmt(maxSec)}`}
+              style={{ position: 'absolute', left: `${markerPct}%`, top: '50%', transform: 'translate(-50%,-50%)', width: 3, height: 18, background: '#b04a30', borderRadius: 2, boxShadow: '0 0 0 2px #fff', pointerEvents: 'none' }} />
+          )}
         </div>
       </div>
       <div className="big-player-meta">
         <span>{fmt(t)}</span>
-        <span>{maxSec ? `prévia até ${fmt(maxSec)}` : `de ${fmt(dur)}`}</span>
+        <span>{maxSec ? `🔒 prévia até ${fmt(maxSec)} · completa ${fmt(scale)}` : `de ${fmt(dur)}`}</span>
       </div>
       <audio ref={audioRef} src={src} preload="metadata"
         onTimeUpdate={e => setT(e.currentTarget.currentTime)}
@@ -3020,8 +3028,6 @@ export default function App() {
       await biaSay('Enquanto a sua fica pronta (uns minutinhos ⏳), se liga em algumas que a gente já fez 🎶'); if (done) return
       pushBubble({ kind: 'examples' }); if (done) return
       await _sleep(24000); if (done) return
-      await biaSay('E ó que massa: cada música ainda vira um *vídeo* 🎬 dá um play pra ver como fica 👇'); if (done) return
-      pushBubble({ kind: 'exampleVideo' }); if (done) return
       await _sleep(38000); if (done) return
       await biaSay('Tá quase saindo do forno… 🔥 já já chega a sua 💜'); if (done) return
       await _sleep(40000); if (done) return
@@ -3327,7 +3333,7 @@ export default function App() {
     { key: 'unica', title: 'Única no mundo', text: 'Cada canção é composta do zero a partir da sua história. Não existe outra igual.', span: 'sm' },
     { key: 'pers', title: '100% personalizada', text: 'Nome, momentos, piadas internas, estilo e voz — tudo escolhido por você.', span: 'sm' },
     { key: 'voz', title: 'Voz à sua escolha', text: 'Masculina, feminina ou deixa o estúdio decidir o que combina mais.', span: 'tall', media: 'phone' },
-    { key: 'video', title: 'Vídeo karaokê (plano premium)', text: 'No plano completo, sua música vira um vídeo com a letra aparecendo na tela — perfeito pra postar e marcar a pessoa.', span: 'wide', media: 'video' },
+    { key: 'previa', title: 'Prévia grátis antes de pagar', text: 'Você ouve sua música primeiro e só libera a versão completa se gostar. Sem risco.', span: 'wide' },
   ]
 
   /* ── Planos ── */
