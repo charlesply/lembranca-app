@@ -3375,7 +3375,6 @@ export default function App() {
       { label: 'Minhas músicas', action: 'myOrders' },
       { label: 'Como funciona', href: '#how' },
       { label: 'Exemplos',      href: '#examples' },
-      { label: 'Preços',        href: '#pricing' },
       { label: 'Perguntas frequentes', href: '#faq' },
     ]},
     { title: 'Ocasiões', links: [
