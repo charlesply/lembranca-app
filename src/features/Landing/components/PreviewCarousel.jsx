@@ -23,10 +23,9 @@ const Waveform = () => {
   )
 }
 
-// Exemplos default (vídeos + áudios reais de clientes).
+// Exemplos default (áudios reais de clientes). Os 2 exemplos de VÍDEO foram
+// removidos (não vendemos mais vídeo na home + traziam branding antigo).
 const DEFAULT_EXAMPLES = [
-  { kind: 'video', title: 'Cristiane para João Paulo', meta: 'Sertanejo · Romântica', src: '/assets/previa/previa-web.mp4', poster: '/assets/previa/previa-poster.jpg' },
-  { kind: 'video', title: 'Para Edson', meta: 'Pagode · Homenagem', src: '/assets/previa/edson-web.mp4', poster: '/assets/previa/edson-poster.jpg' },
   { kind: 'audio', title: 'Para Beatriz', meta: 'Sertanejo', src: '/assets/musicas/m1.mp3' },
   { kind: 'audio', title: 'Para Camila', meta: 'Pop romântico', src: '/assets/musicas/m2.mp3' },
   { kind: 'audio', title: 'Para Daniel', meta: 'Pagode', src: '/assets/musicas/m3.mp3' },

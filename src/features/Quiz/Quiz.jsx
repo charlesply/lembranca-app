@@ -90,7 +90,12 @@ const validateFullName = (s) => {
 const validateEmail = (s) => {
   const v = String(s || '').trim().toLowerCase()
   if (!v) return null
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Esse e-mail parece incompleto 📧 Confere?'
+  // Formato + TLD com >= 2 letras — bloqueia ".c", ponto no final, incompleto.
+  if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/.test(v)) return 'Escreve o e-mail completo (ex: nome@gmail.com) 📧'
+  // Typo de domínio conhecido (hotmeil→hotmail): INVÁLIDO até corrigir — o e-mail
+  // é o único jeito da pessoa receber a música, então não deixa passar errado.
+  const sug = emailSuggest(v)
+  if (sug.correction) return `Parece um errinho no domínio — você quis dizer ${sug.correction}?`
   return null
 }
 
@@ -1173,7 +1178,7 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
               <input className="input-text has-icon" value={phone} onChange={e => setPhone(phoneMask(e.target.value))}
                 type="tel" placeholder="11 9 9999-9999" maxLength={16} />
             </div>
-            <label className="quiz-label" style={{ marginTop: 14 }}>Seu e-mail</label>
+            <label className="quiz-label" style={{ marginTop: 14 }}>E-mail que vai receber a música</label>
             <div className="input-wrapper">
               <span className="input-icon" aria-hidden="true">💌</span>
               <input className="input-text has-icon" value={email} onChange={e => setEmail(e.target.value)}
@@ -1207,7 +1212,7 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
       case 'review':
         return <ReviewScreen rel={rel} honoree={honoree} count={count} children={children}
           traits={traits} open1={open1} open2={open2} exTone={exTone} team={team}
-          occasion={occasion} feeling={feeling} genre={genre} mood={mood} voice={voice} clientName={clientName} phone={phone}
+          occasion={occasion} feeling={feeling} genre={genre} mood={mood} voice={voice} clientName={clientName} phone={phone} email={email}
           onJumpTo={(targetType) => {
             const target = screens.findIndex(s => s.type === targetType)
             if (target >= 0) {
@@ -1331,7 +1336,7 @@ function ChildOpenScreen({ c, nm, hint, setChild, idx, apiTranscribe, audioStopR
 }
 
 /* ─── Tela de revisão · resumo do pedido antes de enviar ─── */
-function ReviewScreen({ rel, honoree, count, children, traits, open1, open2, exTone, team, occasion, feeling, genre, mood, voice, clientName, phone, onJumpTo }) {
+function ReviewScreen({ rel, honoree, count, children, traits, open1, open2, exTone, team, occasion, feeling, genre, mood, voice, clientName, phone, email, onJumpTo }) {
   const honoreeLine = rel?.kind === 'child'
     ? children.slice(0, count).map(c => `${c.name || '—'}${c.age ? ` (${c.age} ${c.ageUnit === 'meses' ? 'meses' : 'anos'})` : ''}`).filter(Boolean).join(', ')
     : honoree
@@ -1367,6 +1372,7 @@ function ReviewScreen({ rel, honoree, count, children, traits, open1, open2, exT
       <h2 className="quiz-q">Tudo certo?</h2>
       <p className="quiz-hint">Última conferida antes de mandar pro estúdio. Toque em <strong>Editar</strong> em qualquer linha pra mudar.</p>
       <div className="quiz-review">
+        <Row label="E-mail que vai receber a música" value={`${clientName}${email ? ' · ' + email : ''}`} jumpTo="contact" />
         <Row label="Pra quem" value={`${rel?.label || '—'} · ${honoreeLine}`} jumpTo="relationship" />
         {rel?.kind !== 'child' && traits.length > 0 && (
           <Row label="Destaques" value={traits.join(', ')} jumpTo="traits" />
@@ -1379,7 +1385,6 @@ function ReviewScreen({ rel, honoree, count, children, traits, open1, open2, exT
         <Row label="Estilo" value={genre} jumpTo="genre" />
         <Row label="Clima" value={mood} jumpTo="mood" />
         <Row label="Voz" value={voice} jumpTo="voice" />
-        <Row label="Contato" value={`${clientName} · ${phone}`} jumpTo="contact" />
       </div>
     </>
   )
