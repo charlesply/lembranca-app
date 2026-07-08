@@ -85,22 +85,52 @@ const validateFullName = (s) => {
   return null
 }
 
-// email — formato básico + sugestão pra typos comuns (gmal/gmial/hotmal/yaho/.con)
+// email — SÓ valida formato básico. Typo NÃO trava mais: virou sugestão
+// interativa abaixo do campo (emailSuggest). Nunca prende a pessoa nessa etapa.
 const validateEmail = (s) => {
   const v = String(s || '').trim().toLowerCase()
   if (!v) return null
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Esse e-mail parece incompleto 📧 Confere?'
-  const typoFixes = [
-    [/@gmal\./, '@gmail.'], [/@gmial\./, '@gmail.'], [/@gmai\./, '@gmail.'],
-    [/@hotmal\./, '@hotmail.'], [/@hotnail\./, '@hotmail.'], [/@hotmai\./, '@hotmail.'],
-    [/@yahooo\./, '@yahoo.'], [/@yaho\./, '@yahoo.'],
-    [/@outloo\./, '@outlook.'], [/@outllok\./, '@outlook.'],
-    [/\.con$/, '.com'], [/\.cm$/, '.com'], [/\.comm$/, '.com'],
-  ]
-  for (const [re, sub] of typoFixes) {
-    if (re.test(v)) return `Acho que você quis dizer "${v.replace(re, sub)}", confere?`
-  }
   return null
+}
+
+// Domínios comuns pra sugestão/correção. INCLUI .com.br (hotmail/outlook/yahoo)
+// — não force o .com; ambos são válidos.
+const EMAIL_DOMAINS = ['gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com.br', 'yahoo.com', 'icloud.com', 'live.com', 'hotmail.com.br', 'outlook.com.br', 'bol.com.br', 'uol.com.br', 'terra.com.br', 'me.com', 'msn.com']
+const EMAIL_SUGGEST_TOP = ['gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com.br', 'icloud.com', 'live.com']
+const _levDist = (a, b) => {
+  const m = a.length, n = b.length
+  if (!m) return n; if (!n) return m
+  const d = Array.from({ length: m + 1 }, (_, i) => { const row = new Array(n + 1).fill(0); row[0] = i; return row })
+  for (let j = 1; j <= n; j++) d[0][j] = j
+  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) {
+    const c = a[i - 1] === b[j - 1] ? 0 : 1
+    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + c)
+  }
+  return d[m][n]
+}
+// { chips:[emails p/ completar], correction:'x@y'|null }. Só ajuda — nunca bloqueia.
+const emailSuggest = (raw) => {
+  const v = String(raw || '').trim().toLowerCase()
+  const out = { chips: [], correction: null }
+  if (!v || /\s/.test(v)) return out
+  const at = v.indexOf('@')
+  const local = at === -1 ? v : v.slice(0, at)
+  if (!local) return out
+  const domain = at === -1 ? '' : v.slice(at + 1)
+  // Ainda sem domínio completo (sem @ ou domínio sem ponto) → chips pra completar
+  if (at === -1 || !domain.includes('.')) {
+    const base = EMAIL_SUGGEST_TOP.filter(dm => !domain || dm.startsWith(domain))
+    ;(base.length ? base : EMAIL_SUGGEST_TOP).slice(0, 6).forEach(dm => out.chips.push(`${local}@${dm}`))
+    return out
+  }
+  // Domínio completo e conhecido (inclui .com.br) → tudo certo, sem sugestão
+  if (EMAIL_DOMAINS.includes(domain)) return out
+  // Typo? sugere o domínio conhecido mais próximo (distância pequena) — NÃO trava
+  let best = null, bd = 99
+  for (const dm of EMAIL_DOMAINS) { const dist = _levDist(domain, dm); if (dist < bd) { bd = dist; best = dm } }
+  if (best && bd > 0 && bd <= 2) out.correction = `${local}@${best}`
+  return out
 }
 
 // idade plausível (0–110). `required` torna o campo obrigatório (usado em childInfo).
@@ -1125,6 +1155,7 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
       case 'contact': {
         const clientErr = validateFullName(clientName)
         const emailErr = validateEmail(email)
+        const emailSug = emailSuggest(email)
         return (
           <>
             <h2 className="quiz-q">Falta pouquinho! Quem é você?</h2>
@@ -1149,7 +1180,26 @@ export default function Quiz({ onComplete, onChat, phoneMask, apiTranscribe, api
                 type="email" inputMode="email" autoComplete="email" autoCapitalize="off" autoCorrect="off"
                 placeholder="seu@email.com" aria-invalid={!!emailErr} maxLength={120} />
             </div>
-            {emailErr && <p className="quiz-hint" style={{ marginTop: 8, color: 'var(--c-danger)' }} role="alert">{emailErr}</p>}
+            {emailSug.chips.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                {emailSug.chips.map(s => (
+                  <button type="button" key={s} onClick={() => setEmail(s)}
+                    style={{ background: '#fdf1ec', border: '1px solid #f0d9cf', color: '#a24d33', borderRadius: 999, padding: '6px 12px', fontSize: 13, cursor: 'pointer' }}>{s}</button>
+                ))}
+              </div>
+            )}
+            {emailSug.correction && (
+              <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+                <span className="quiz-hint" style={{ margin: 0, color: 'var(--c-danger)' }}>Confere o domínio:</span>
+                <button type="button" onClick={() => setEmail(emailSug.correction)}
+                  style={{ background: '#b04a30', color: '#fff', border: 0, borderRadius: 999, padding: '6px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                  Você quis dizer {emailSug.correction}?
+                </button>
+              </div>
+            )}
+            {emailErr && !emailSug.chips.length && !emailSug.correction && (
+              <p className="quiz-hint" style={{ marginTop: 8, color: 'var(--c-danger)' }} role="alert">{emailErr}</p>
+            )}
           </>
         )
       }

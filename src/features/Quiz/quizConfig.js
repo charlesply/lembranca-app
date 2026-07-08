@@ -9,6 +9,7 @@
 export const GENRES = [
   { label: 'Sertanejo', icon: '🎵' },
   { label: 'Sertanejo Raiz', icon: '🎶' },
+  { label: 'Pop Romântico', icon: '💕' },
   { label: 'Gospel', icon: '📖' },
   { label: 'Pagode', icon: '🪘' },
   { label: 'MPB', icon: '🎙️' },
@@ -32,7 +33,7 @@ export const GENRES = [
 
 // "Mais pedidos" — aparecem em destaque no topo da tela de estilo musical;
 // os demais ficam atrás de um expander.
-export const TOP_GENRE_LABELS = ['Sertanejo', 'Sertanejo Raiz', 'Gospel', 'Pagode', 'MPB', 'Trap']
+export const TOP_GENRE_LABELS = ['Sertanejo', 'Sertanejo Raiz', 'Pop Romântico', 'Gospel', 'Pagode', 'MPB', 'Trap']
 
 // Estilo "Infantil" — só aparece (como 1ª opção) quando o homenageado tem
 // 14 anos ou menos. Fora desse caso, não consta no menu.
