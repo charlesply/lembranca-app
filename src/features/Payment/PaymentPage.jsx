@@ -58,11 +58,17 @@ export default function PaymentPage() {
   const navigate = useNavigate()
   const [order, setOrder] = useState(null)
   const [err, setErr] = useState(null)
-  // Variante do teste A/B de preço — atribuída 1× por visitante (localStorage).
-  const [priceVariant] = useState(() => getPriceVariant())
+  // Variante do teste A/B de preço — FONTE DA VERDADE é a fixada no PEDIDO
+  // (order.price_variant); o cliente vê SEMPRE o mesmo preço em qualquer device.
+  // Enquanto o pedido carrega, cai no fallback; ao chegar, usa a do pedido.
+  const priceVariant = getPriceVariant(order?.price_variant)
   const PLANS = plansForVariant(priceVariant)
   // Default: control pré-seleciona 'completa'; teste tem plano único.
-  const [plan, setPlan] = useState(() => plansForVariant(priceVariant)[0].key)
+  const [plan, setPlan] = useState(() => plansForVariant(getPriceVariant())[0].key)
+  // Quando a variante do pedido chega, garante um plano válido pra ela.
+  useEffect(() => {
+    if (!PLANS.some(p => p.key === plan)) setPlan(PLANS[0].key)
+  }, [priceVariant]) // eslint-disable-line react-hooks/exhaustive-deps
   const [pix, setPix] = useState(null)
   const [loadingPix, setLoadingPix] = useState(false)
   const [copied, setCopied] = useState(false)

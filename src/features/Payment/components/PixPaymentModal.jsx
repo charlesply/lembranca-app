@@ -18,13 +18,14 @@ import { fetchOrderStatus } from '../api/paymentService'
 
 export default function PixPaymentModal({
   open, onClose, planKey = 'musica', orderId, honoreeName, customerName, customerPhone,
-  onPaid, onHelpWhatsApp, startAt = 'plan',
+  onPaid, onHelpWhatsApp, startAt = 'plan', orderVariant,
 }) {
   const [copied, setCopied] = useState(false)
   // 'plan' = escolha do plano · 'pay' = QR · 'upload' = comprovante · 'sending' · 'success' · 'review' · 'rejected'
   const [step, setStep] = useState('plan')
-  // Variante do teste A/B de preço — atribuída 1× por visitante (localStorage).
-  const [priceVariant] = useState(() => getPriceVariant())
+  // Variante do teste A/B de preço — FONTE DA VERDADE é a fixada no PEDIDO
+  // (orderVariant), pra o cliente ver sempre o mesmo preço em qualquer device.
+  const [priceVariant] = useState(() => getPriceVariant(orderVariant))
   const testVariant = isTestVariant(priceVariant)
   const testCfg = testVariant ? TEST_VARIANTS[priceVariant] : null
   // selectedPlan vive DENTRO do modal pra permitir o usuario trocar de plano

@@ -54,7 +54,16 @@ const PLAN_VALUES = { musica: 19.90, completa: 29.90 }
 // contra hiccup de rede ou 5xx temporário, evitando perder a história escrita.
 async function apiCreateOrder(body) {
   let lastErr = null
-  const enriched = { ...body, ...getMetaPixelData(), ...getTracking() }
+  // QA no STAGING: ?pv fixa a variante de preço no pedido (o backend só honra se
+  // o Origin/Referer for staging). Em produção não injeta nada.
+  let _fv = {}
+  try {
+    if (typeof window !== 'undefined' && /(^|\.)staging\./.test(window.location.hostname)) {
+      const pv = new URLSearchParams(window.location.search).get('pv')
+      if (['control', 'p37', 'p47', 'p67'].includes(pv)) _fv = { forceVariant: pv }
+    }
+  } catch (_) {}
+  const enriched = { ...body, ..._fv, ...getMetaPixelData(), ...getTracking() }
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const r = await fetch(`${API_URL}/api/order`, {
@@ -1973,6 +1982,7 @@ export default function App() {
           plan: row.plan || null,
           orderId: co.id,
           unlocked: !!row.paid_at,
+          price_variant: row.price_variant || null,
           previewLimitSec: 50,
         })
         setCurrentOrderId(co.id)
@@ -2049,6 +2059,7 @@ export default function App() {
           video_url: row.video_brinde_url || null,
           plan: row.plan || null,
           unlocked: false,
+          price_variant: row.price_variant || null,
           fullDurationSec: 189,
           previewLimitSec: 50,
         })
@@ -4062,6 +4073,7 @@ export default function App() {
         customerName={pixModal?.customerName}
         customerPhone={pixModal?.customerPhone}
         startAt={pixModal?.startAt || 'plan'}
+        orderVariant={pixModal?.orderVariant || resultData?.price_variant}
         onHelpWhatsApp={openHelpOnWhatsApp}
         onPaid={async (oid) => {
           // backend já marcou paid_at — busca os links atualizados e libera a UI.

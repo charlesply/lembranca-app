@@ -34,26 +34,27 @@ function drawVariant() {
   return ['p37', 'p47', 'p67'][Math.min(2, t)]
 }
 
-// Lê (ou atribui na 1ª vez) a variante de preço do visitante. Persiste sempre.
-export function getPriceVariant() {
+const _VALID_PV = ['control', 'p37', 'p47', 'p67']
+
+// Resolve a variante de preço. PRIORIDADE:
+//   1) ?pv= no STAGING (QA — blindado por hostname, nunca vale em produção)
+//   2) orderVariant — a variante FIXADA NO PEDIDO (fonte da verdade: o cliente
+//      vê SEMPRE o mesmo preço em qualquer device / no link do e-mail)
+//   3) localStorage/sorteio (rede de segurança — o pedido sempre traz a variante)
+export function getPriceVariant(orderVariant) {
   try {
-    // 🧪 Override por URL — SÓ no staging (blindado por hostname pra NUNCA virar
-    // backdoor de preço em produção). Ex: ?pv=control | p37 | p47 | p67
     if (typeof window !== 'undefined' && /(^|\.)staging\./.test(window.location.hostname)) {
       const pv = new URLSearchParams(window.location.search).get('pv')
-      if (pv === 'control' || pv === 'p37' || pv === 'p47' || pv === 'p67') {
-        try { localStorage.setItem(PRICE_VARIANT_KEY, pv) } catch (_) {}
-        return pv
-      }
+      if (_VALID_PV.includes(pv)) { try { localStorage.setItem(PRICE_VARIANT_KEY, pv) } catch (_) {} return pv }
     }
+    if (_VALID_PV.includes(orderVariant)) return orderVariant
     const cur = localStorage.getItem(PRICE_VARIANT_KEY)
-    if (cur === 'control' || cur === 'p37' || cur === 'p47' || cur === 'p67') return cur
+    if (_VALID_PV.includes(cur)) return cur
     const v = drawVariant()
     try { localStorage.setItem(PRICE_VARIANT_KEY, v) } catch (_) {}
     return v
   } catch (_) {
-    // localStorage indisponível → não quebra o checkout, cai no control.
-    return 'control'
+    return _VALID_PV.includes(orderVariant) ? orderVariant : 'control'
   }
 }
 
