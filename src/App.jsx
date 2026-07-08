@@ -680,8 +680,8 @@ async function openHelpOnWhatsApp({ orderId, honoreeName, customerName, customer
     '',
     'Vou mandar o comprovante aqui agora 👇',
   ].filter(Boolean).join('\n')
-  const url = `https://wa.me/${BIA_PHONE_E164}?text=${encodeURIComponent(text)}`
-  // Ping no backend (fire-and-forget) — admin já recebe o alerta no WhatsApp.
+  const url = `mailto:suporte@lembrancacantada.com?subject=${encodeURIComponent('Ajuda com meu pedido #' + id8)}&body=${encodeURIComponent(text)}`
+  // Ping no backend (fire-and-forget) — admin já recebe o alerta.
   try {
     if (orderId) {
       fetch(`${API_URL}/api/order/${orderId}/help_request`, {
@@ -1436,14 +1436,13 @@ function PreviewResultView({ resultData, onBuy, onWhatsApp, onNew, payLoading })
           const orderId = resultData?.orderId ? `\nPedido: #${String(resultData.orderId).slice(0,8).toUpperCase()}` : ''
           const link = resultData?.original_url ? `\nLink: ${resultData.original_url}` : ''
           const msg = `${greet} — comprei a música para *${honoree}* e preciso de ajuda 🎵${orderId}${link}`
-          const waHref = `https://wa.me/${supportNum}?text=${encodeURIComponent(msg)}`
+          const mailHref = `mailto:suporte@lembrancacantada.com?subject=${encodeURIComponent('Preciso de ajuda com meu pedido')}&body=${encodeURIComponent(msg)}`
           return (
-            <a className="floating-wa-btn" href={waHref} target="_blank" rel="noopener noreferrer"
-              aria-label="Suporte no WhatsApp"
-              title="Precisa de ajuda? Fala com a Bia no WhatsApp">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-              </svg>
+            <a className="floating-wa-btn" href={mailHref}
+              aria-label="Suporte por e-mail"
+              title="Precisa de ajuda? Fale com a gente por e-mail"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>
+              ✉️
             </a>
           )
         })()}
@@ -2114,7 +2113,8 @@ export default function App() {
   const closePixModal = () => setPixModal(null)
   const BIA_PHONE = '5511920933097'
   const INSTAGRAM = 'https://instagram.com/lembrancacantada'
-  const WHATSAPP = `https://wa.me/${'5511920933097'}`
+  const WHATSAPP = 'mailto:suporte@lembrancacantada.com'
+  const SUPORTE_EMAIL = 'mailto:suporte@lembrancacantada.com'
   const lastScrollY = useRef(0)
   const headerRef = useRef(null)
   const ticking = useRef(false)
@@ -3346,9 +3346,9 @@ export default function App() {
     ]},
     { title: 'Empresa', links: [
       { label: 'Sobre nós', href: '#how' },
-      { label: 'Contato',   href: `https://wa.me/${'5511920933097'}`, external: true },
+      { label: 'Contato',   href: 'mailto:suporte@lembrancacantada.com', external: true },
       { label: 'Instagram', href: 'https://instagram.com/lembrancacantada', external: true },
-      { label: 'WhatsApp',  href: `https://wa.me/${'5511920933097'}`, external: true },
+      { label: 'E-mail',    href: 'mailto:suporte@lembrancacantada.com', external: true },
     ]},
     { title: 'Legal', links: [
       { label: 'Termos de uso', href: '/termos.html', external: true },
@@ -4005,32 +4005,29 @@ export default function App() {
                 Falta só 1 passo!
               </div>
               <div style={{ fontSize: '15px', color: '#e9d5ff', marginBottom: '20px', lineHeight: '1.5' }}>
-                Pra eu te enviar a prévia <strong>segura no WhatsApp</strong>,
-                manda essa mensagem rapidinha pra gente 👇
+                Ficou alguma dúvida? <strong>Fale com a gente por e-mail</strong> 👇
               </div>
               <a
-                href={`https://wa.me/${BIA_PHONE}?text=${encodeURIComponent(`Oi! Pedido #${currentOrderId.slice(0,8)} - To aguardando a previa da minha musica`)}`}
-                target="_blank"
-                rel="noopener noreferrer"
+                href={`mailto:suporte@lembrancacantada.com?subject=${encodeURIComponent('Aguardando a prévia — Pedido #' + currentOrderId.slice(0,8))}&body=${encodeURIComponent('Oi! Estou aguardando a prévia da minha música. Pedido #' + currentOrderId.slice(0,8))}`}
                 style={{
                   display: 'inline-block',
-                  background: '#25d366',
+                  background: '#CC785C',
                   color: '#fff',
                   fontSize: '17px',
                   fontWeight: 'bold',
                   padding: '14px 32px',
                   borderRadius: '50px',
                   textDecoration: 'none',
-                  boxShadow: '0 4px 16px rgba(37, 211, 102, 0.4)',
+                  boxShadow: '0 4px 16px rgba(204, 120, 92, 0.4)',
                   transition: 'transform 0.2s',
                 }}
                 onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
                 onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
               >
-                📱 Enviar mensagem no WhatsApp
+                ✉️ Falar por e-mail
               </a>
               <div style={{ fontSize: '12px', color: '#c4b5fd', marginTop: '14px', fontStyle: 'italic' }}>
-                Clica → WhatsApp abre com a mensagem pronta → você só aperta enviar ✨
+                Clica → seu e-mail abre com a mensagem pronta → é só enviar ✨
               </div>
             </div>
           )}
@@ -4072,7 +4069,7 @@ export default function App() {
               const text = resultData.orderId
                 ? `Oi! Pedido #${String(resultData.orderId).slice(0,8)} - dúvida sobre a minha música`
                 : 'Oi! Quero falar com a Bia'
-              window.open(`https://wa.me/${BIA_PHONE}?text=${encodeURIComponent(text)}`, '_blank', 'noopener')
+              window.location.href = `mailto:suporte@lembrancacantada.com?subject=${encodeURIComponent('Dúvida sobre minha música')}&body=${encodeURIComponent(text)}`
             }}
             onNew={resetToLanding}
           />
@@ -4258,14 +4255,14 @@ export default function App() {
                 Tentar de novo
               </button>
               <a className="pix-wa-link error-wa-btn"
-                href={`https://wa.me/${BIA_PHONE_E164}?text=${encodeURIComponent([
+                href={`mailto:suporte@lembrancacantada.com?subject=${encodeURIComponent('Erro ao gerar minha música')}&body=${encodeURIComponent([
                   'Oi Bia! 💜',
                   '',
                   'Deu erro na hora de criar minha música. Pode gerar manualmente pra mim?',
                   '',
                   currentOrderId ? `*Pedido:* #${String(currentOrderId).slice(0,8).toUpperCase()}` : '',
                   formData?.clientName ? `*Meu nome:* ${formData.clientName}` : '',
-                  formData?.phone ? `*Meu WhatsApp:* ${formData.phone}` : '',
+                  formData?.phone ? `*Meu telefone:* ${formData.phone}` : '',
                   '',
                   '*Detalhes da música:*',
                   formData?.honoreeName ? `• Pra: ${formData.honoreeName}` : '',
@@ -4284,7 +4281,7 @@ export default function App() {
                 <svg className="pix-wa-link-icon" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                   <path d="M20.52 3.48A11.84 11.84 0 0 0 12.04 0C5.5 0 .2 5.31.2 11.85c0 2.09.55 4.13 1.6 5.93L0 24l6.39-1.67a11.83 11.83 0 0 0 5.65 1.44h.01c6.54 0 11.84-5.31 11.84-11.85 0-3.17-1.23-6.14-3.47-8.44Zm-8.48 18.22h-.01a9.86 9.86 0 0 1-5.02-1.38l-.36-.21-3.79.99 1.01-3.69-.23-.38a9.83 9.83 0 0 1-1.5-5.18c0-5.43 4.42-9.85 9.86-9.85 2.63 0 5.1 1.03 6.96 2.9a9.79 9.79 0 0 1 2.89 6.96c0 5.44-4.43 9.84-9.81 9.84Zm5.4-7.37c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.95 1.17-.17.2-.35.22-.65.07-.3-.15-1.25-.46-2.38-1.47-.88-.79-1.47-1.76-1.64-2.05-.17-.3-.02-.45.13-.6.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51-.17-.01-.37-.01-.57-.01-.2 0-.52.07-.8.37-.27.3-1.05 1.02-1.05 2.49 0 1.47 1.08 2.89 1.23 3.09.15.2 2.12 3.24 5.13 4.54.72.31 1.28.5 1.72.64.72.23 1.38.2 1.9.12.58-.09 1.76-.72 2.01-1.41.25-.7.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35Z"/>
                 </svg>
-                <span>Falar com a Bia no WhatsApp</span>
+                <span>Falar com a Bia por e-mail</span>
               </a>
             </div>
           </div>
@@ -4358,7 +4355,7 @@ export default function App() {
               <a href="#" className="header-logo"><IconMusic s={20} /> Lembrança<span className="accent">Cantada</span></a>
               <p className="footer-desc">Transformamos a sua história em uma música personalizada e inesquecível. O presente que emociona de verdade. 💜</p>
               <div className="footer-socials">
-                <a href={`https://wa.me/${BIA_PHONE}`} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><WhatsAppIcon /></a>
+                <a href="mailto:suporte@lembrancacantada.com" aria-label="E-mail de suporte" style={{ fontSize: 20, textDecoration: 'none' }}>✉️</a>
                 <a href={INSTAGRAM} target="_blank" rel="noopener noreferrer" aria-label="Instagram"><InstaIcon /></a>
               </div>
             </div>

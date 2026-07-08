@@ -22,18 +22,18 @@ export default function BiaFab({ visible, supportNum = '5511920933097' }) {
     ? ` — sobre a música para *${honoree}*`
     : ' — quero entender melhor sobre a música personalizada antes de comprar 🎵'
   const msg = `${greet}${honPart}${orderId}`
-  const waHref = `https://wa.me/${supportNum}?text=${encodeURIComponent(msg)}`
+  const mailHref = `mailto:suporte@lembrancacantada.com?subject=${encodeURIComponent('Ajuda — Lembrança Cantada')}&body=${encodeURIComponent(msg)}`
 
   return (
-    <a className={`bia-fab${visible ? ' visible' : ''}`} href={waHref}
-       target="_blank" rel="noopener noreferrer" aria-label="Falar com a Bia no WhatsApp">
+    <a className={`bia-fab${visible ? ' visible' : ''}`} href={mailHref}
+       aria-label="Falar com a Bia por e-mail">
       <span className="bia-fab-avatar">
         <img src="/assets/Bia.jpeg" alt="Bia" onError={e => e.currentTarget.classList.add('hide')} />
         <span className="bia-fab-dot" />
       </span>
       <span className="bia-fab-info">
         <span className="bia-fab-name">Bia</span>
-        <span className="bia-fab-status">online · responde na hora</span>
+        <span className="bia-fab-status">suporte@lembrancacantada.com</span>
       </span>
     </a>
   )

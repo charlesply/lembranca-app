@@ -18,14 +18,14 @@ const DEFAULT_FAQS = [
   { q: 'Posso escolher a voz e o estilo?', a: 'Com certeza. Você escolhe o gênero musical, o clima e se a voz é masculina ou feminina. Tudo do seu jeito.' },
   { q: 'Como eu recebo a música?', a: 'A prévia e a versão completa ficam disponíveis aqui mesmo no site pra você baixar em MP3. Se escolher o plano com vídeo karaokê (R$ 29,90), o vídeo também aparece pronto pra baixar.' },
   { q: 'E se eu quiser alterar algo na música?', a: 'Dá pra ajustar! Alterações na música têm um pequeno custo adicional e a gente refaz pra ficar do jeitinho que você quer.' },
-  { q: 'Como faço o pagamento?', a: 'O pagamento é por PIX, rápido e seguro. Depois é só enviar o comprovante no WhatsApp que a gente libera tudo na hora.' },
+  { q: 'Como faço o pagamento?', a: 'O pagamento é por PIX, rápido e seguro. Assim que o pagamento é confirmado, o acesso é liberado automaticamente — sem precisar enviar comprovante.' },
   { q: 'Posso mandar a história por áudio?', a: 'Pode sim! É só gravar um áudio contando a história que a gente transcreve e usa tudo na composição da música.' },
 ]
 
 export default function FaqSection({
   faqs = DEFAULT_FAQS,
   biaPhone = '5511920933097',
-  instagramUrl = 'https://instagram.com/historiascantadasbr',
+  instagramUrl = 'https://instagram.com/lembrancacantada',
   onScrollToForm,
 }) {
   return (
@@ -39,18 +39,18 @@ export default function FaqSection({
           <p className="faq-aside-text">
             Não encontrou sua pergunta? Fala com a gente, respondemos rapidinho. 💜
           </p>
-          <a href={`https://wa.me/${biaPhone}`} target="_blank" rel="noopener noreferrer" className="faq-contact">
-            <span className="faq-contact-ic"><WhatsAppIcon /></span>
+          <a href="mailto:suporte@lembrancacantada.com" className="faq-contact">
+            <span className="faq-contact-ic">✉️</span>
             <div>
-              <div className="faq-contact-t">WhatsApp</div>
-              <div className="faq-contact-s">Resposta na hora</div>
+              <div className="faq-contact-t">E-mail</div>
+              <div className="faq-contact-s">suporte@lembrancacantada.com</div>
             </div>
           </a>
           <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="faq-contact">
             <span className="faq-contact-ic"><InstaIcon /></span>
             <div>
               <div className="faq-contact-t">Instagram</div>
-              <div className="faq-contact-s">@historiascantadasbr</div>
+              <div className="faq-contact-s">@lembrancacantada</div>
             </div>
           </a>
           <button className="btn-primary" onClick={onScrollToForm}>Criar minha música →</button>
