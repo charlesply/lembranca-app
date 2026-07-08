@@ -294,7 +294,11 @@ export default function PixPaymentModal({
         )}
 
         <div className="pix-modal-amount-card">
-          <span className="pix-modal-amount-label">Valor único</span>
+          <span className="pix-modal-amount-label">
+            {testCfg && testCfg.anchor
+              ? <>De <s style={{ color: '#b39a8c' }}>{fmtBRL(testCfg.anchor)}</s> por</>
+              : 'Valor único'}
+          </span>
           <strong className="pix-modal-amount">{fmtBRL(plan.amount)}</strong>
           <span className="pix-modal-offer" role="timer" aria-live="off">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

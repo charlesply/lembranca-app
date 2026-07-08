@@ -1288,11 +1288,25 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
 }
 
 function PreviewResultView({ resultData, onBuy, onWhatsApp, onNew, payLoading }) {
-  const fullDuration = resultData?.fullDurationSec || 189 // 3:09
   const previewLimit = resultData?.previewLimitSec || 50  // 0:50
 
   // referência ao player principal pra controlar o "spinning" do disco
   const [playing, setPlaying] = useState(false)
+  // Duração REAL da música completa — lida do metadata do áudio original (já
+  // vem no resultData). Escala a timeline certinho; cai no 189 até carregar.
+  const [realFullSec, setRealFullSec] = useState(0)
+  useEffect(() => {
+    const url = resultData?.original_url
+    if (!url) { setRealFullSec(0); return }
+    let cancelled = false
+    const a = new Audio()
+    a.preload = 'metadata'
+    const onMeta = () => { if (!cancelled && Number.isFinite(a.duration) && a.duration > 1) setRealFullSec(a.duration) }
+    a.addEventListener('loadedmetadata', onMeta)
+    a.src = url
+    return () => { cancelled = true; a.removeEventListener('loadedmetadata', onMeta); try { a.src = '' } catch (_) {} }
+  }, [resultData?.original_url])
+  const fullDuration = realFullSec || resultData?.fullDurationSec || 189
   // Ref do card "Bloqueada — libere agora" pra fazer auto-scroll quando o
   // usuário termina de ouvir a prévia (ponto natural de conversão).
   const lockedCardRef = useRef(null)
