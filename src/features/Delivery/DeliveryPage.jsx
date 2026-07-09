@@ -14,6 +14,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { safeFilename } from '../../core/utils'
 import { useVideoPoster } from './hooks/useVideoPoster'
 import { fetchOrderStatus } from './api/deliveryService'
+import { MusicSelfEdit, MSE_ENABLED } from '../../components/MusicSelfEdit'
 
 // Detecta suporte a compartilhar arquivos via Web Share API.
 // Em mobile (Android Chrome, iOS Safari 15+) compartilha o ARQUIVO direto
@@ -45,6 +46,8 @@ export default function DeliveryPage() {
   const [shareState, setShareState] = useState({})
   const setShare = (key, patch) => setShareState(prev => ({ ...prev, [key]: { ...prev[key], ...patch } }))
   const [showOrig, setShowOrig] = useState(false) // originais recolhidas quando há novas
+  const [editing, setEditing] = useState(false)   // self-edit aberto
+  const [justSent, setJustSent] = useState(false) // otimista: acabou de confirmar o ajuste
 
   useEffect(() => {
     if (!id) { setErr('Link inválido. Verifique a URL.'); return }
@@ -149,7 +152,7 @@ export default function DeliveryPage() {
   const prevAudios = Array.isArray(data.prev_audio_urls) ? data.prev_audio_urls.filter(Boolean) : []
   // Só rotula "originais vs novas" quando a nova música já ficou pronta — durante
   // a regeneração o full_audio_urls ainda é o antigo (evita mostrar 2x igual).
-  const regenerating = data.edit_status === 'regenerating'
+  const regenerating = data.edit_status === 'regenerating' || (justSent && !['done', 'error'].includes(data.edit_status))
   const hasEdit = prevAudios.length > 0 && !regenerating
   const multi = newAudios.length > 1
   const honoree = data.honoree_name || 'você'
@@ -184,6 +187,9 @@ export default function DeliveryPage() {
 
   const video = data.video_brinde_url
   const paid = !!data.paid_at
+  // Self-edit (1×): pode ajustar quem pagou, ainda não usou o ajuste, não está
+  // regenerando e não deu erro. Mesmas travas server-side do App.jsx.
+  const canEdit = MSE_ENABLED && paid && !data.self_edit_used && !hasEdit && !regenerating && data.edit_status !== 'error'
 
   return (
     <Shell>
@@ -255,6 +261,29 @@ export default function DeliveryPage() {
             Sua música ainda está sendo gerada. Volte em alguns minutos.
           </p>
         )}
+
+        {/* ── SELF-EDIT (ajustar a música, 1×) ── */}
+        {editing ? (
+          <div className="dp-edit-wrap">
+            <MusicSelfEdit
+              order={{ ...data, id }}
+              onClose={() => setEditing(false)}
+              onConfirmed={() => { setJustSent(true); setEditing(false); fetchOrderStatus(id).then(o => o && setData(o)).catch(() => {}) }}
+            />
+          </div>
+        ) : regenerating ? null /* o banner de "sendo criada" já aparece no topo */
+          : data.edit_status === 'error' ? (
+            <p className="dp-edit-done dp-edit-err">Tivemos um probleminha pra criar sua nova música — nossa equipe já foi avisada e vai resolver pra você 💛</p>
+          ) : data.self_edit_used ? (
+            <p className="dp-edit-done">✓ Você já criou sua versão nova dessa música. Pra outra, é só criar uma nova do zero 💛</p>
+          ) : canEdit ? (
+            <div className="dp-edit-cta">
+              <button type="button" className="dp-edit-btn" onClick={() => setEditing(true)}>
+                ✏️ Quero ajustar minha música
+              </button>
+              <p className="dp-edit-hint">Você tem direito a 1 ajuste — a gente cria uma versão nova com as suas mudanças.</p>
+            </div>
+          ) : null}
 
         <p className="dp-footer">
           Lembrança Cantada · Feito com carinho 💛
@@ -340,6 +369,13 @@ function Shell({ children }) {
         }
         .dp-err { color: #b04a30; }
         .dp-footer { text-align: center; margin-top: 32px; padding-top: 20px; border-top: 1px solid #f3e5d8; color: #a09080; font-size: 13px; }
+        .dp-edit-wrap { margin-top: 24px; }
+        .dp-edit-cta { margin: 26px 0 4px; text-align: center; }
+        .dp-edit-btn { width: 100%; padding: 14px 16px; border-radius: 12px; border: 1.5px solid #CC785C; background: #fff; color: #CC785C; font-weight: 700; font-size: 15px; cursor: pointer; font-family: inherit; transition: background .15s, color .15s; }
+        .dp-edit-btn:hover { background: #CC785C; color: #fff; }
+        .dp-edit-hint { margin: 10px 0 0; font-size: 12.5px; color: #a09080; line-height: 1.5; }
+        .dp-edit-done { margin: 26px 0 4px; padding: 14px 16px; background: #f4f9f4; border: 1px solid #cfe6cf; border-radius: 12px; color: #2f7a3f; font-size: 13.5px; text-align: center; line-height: 1.5; }
+        .dp-edit-err { background: #fdf3f0; border-color: #f0cabb; color: #b04a30; }
         .dp-video-producing {
           background: #fff;
           border: 1px dashed #ecc8b6;
