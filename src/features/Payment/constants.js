@@ -23,7 +23,7 @@ export const PRICE_VARIANT_KEY = 'lc_price_variant'
 
 // Config de cada variante de teste: qual planKey mandar pro backend + display.
 export const TEST_VARIANTS = {
-  p29: { planKey: 'test29', price: 29.00, anchor: 97.00 }, // ATIVO
+  p29: { planKey: 'test29', price: 29.00, anchor: null }, // ATIVO — sem âncora (mostra "Valor único")
   p37: { planKey: 'test37', price: 37.00, anchor: 97.00 }, // encerrado (só p/ pedidos antigos)
   p47: { planKey: 'test47', price: 47.00, anchor: 97.00 }, // encerrado
   p67: { planKey: 'test67', price: 67.00, anchor: 127.00 }, // encerrado
