@@ -61,7 +61,7 @@ async function apiCreateOrder(body) {
   try {
     if (typeof window !== 'undefined' && /(^|\.)staging\./.test(window.location.hostname)) {
       const pv = new URLSearchParams(window.location.search).get('pv')
-      if (['control', 'p37', 'p47', 'p67'].includes(pv)) _fv = { forceVariant: pv }
+      if (['control', 'p29', 'p37', 'p47', 'p67'].includes(pv)) _fv = { forceVariant: pv }
     }
   } catch (_) {}
   const enriched = { ...body, ..._fv, ...getMetaPixelData(), ...getTracking() }

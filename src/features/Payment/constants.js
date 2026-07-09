@@ -5,6 +5,7 @@ export const PLAN_DETAILS = {
   completa: { name: 'Música personalizada + vídeo', amount: 29.90 },
   // Planos do TESTE A/B de preço (música only + 1 edição, SEM vídeo).
   // Preço/entrega decididos no servidor (payPlans). Aqui só o display.
+  test29:   { name: 'Música personalizada', amount: 29.00 },
   test37:   { name: 'Música personalizada', amount: 37.00 },
   test47:   { name: 'Música personalizada', amount: 47.00 },
   test67:   { name: 'Música personalizada', amount: 67.00 },
@@ -13,28 +14,27 @@ export const PLAN_DETAILS = {
 // ─────────────────────────────────────────────────────────────
 // TESTE A/B DE PREÇO
 // Atribui UMA vez por visitante (persistido em localStorage) e nunca reatribui.
-//   - 50% → 'control' (fluxo atual: musica R$19,90 + completa R$29,90 com vídeo)
-//   - 25% p37 · 25% p47  (p67 SAIU do teste 08/jul — convertia mal. Config de p67
-//     é mantida abaixo só pra renderizar pedidos p67 antigos + QA ?pv=p67.)
-// Sorteio: r < 0.5 → control; senão [0.5,0.75) → p37, [0.75,1) → p47.
+// TESTE ATIVO (09/jul): 50% control (musica R$19,90 / completa R$29,90 com vídeo)
+//   vs 50% p29 (botão único R$29,90, SÓ música, sem vídeo). Sorteio: r<0.5 control.
+// p37/p47/p67 ENCERRADOS — config mantida abaixo só pra renderizar pedidos
+// antigos dessas variantes + QA ?pv=. Não são mais sorteados.
 // ─────────────────────────────────────────────────────────────
 export const PRICE_VARIANT_KEY = 'lc_price_variant'
 
 // Config de cada variante de teste: qual planKey mandar pro backend + display.
 export const TEST_VARIANTS = {
-  p37: { planKey: 'test37', price: 37.00, anchor: 97.00 },
-  p47: { planKey: 'test47', price: 47.00, anchor: 97.00 },
-  p67: { planKey: 'test67', price: 67.00, anchor: 127.00 },
+  p29: { planKey: 'test29', price: 29.00, anchor: 97.00 }, // ATIVO
+  p37: { planKey: 'test37', price: 37.00, anchor: 97.00 }, // encerrado (só p/ pedidos antigos)
+  p47: { planKey: 'test47', price: 47.00, anchor: 97.00 }, // encerrado
+  p67: { planKey: 'test67', price: 67.00, anchor: 127.00 }, // encerrado
 }
 
 function drawVariant() {
-  const r = Math.random()
-  if (r < 0.5) return 'control'
-  // p67 saiu do teste: [0.5,0.75) → p37, [0.75,1) → p47.
-  return r < 0.75 ? 'p37' : 'p47'
+  // Teste ativo: 50% control / 50% p29.
+  return Math.random() < 0.5 ? 'control' : 'p29'
 }
 
-const _VALID_PV = ['control', 'p37', 'p47', 'p67']
+const _VALID_PV = ['control', 'p29', 'p37', 'p47', 'p67']
 
 // Resolve a variante de preço. PRIORIDADE:
 //   1) ?pv= no STAGING (QA — blindado por hostname, nunca vale em produção)
@@ -60,5 +60,5 @@ export function getPriceVariant(orderVariant) {
 
 // Variante é de teste (mostra plano único música-only)?
 export function isTestVariant(v) {
-  return v === 'p37' || v === 'p47' || v === 'p67'
+  return v === 'p29' || v === 'p37' || v === 'p47' || v === 'p67'
 }
