@@ -34,10 +34,9 @@ export const TEST_VARIANTS = {
 }
 
 function drawVariant() {
-  // Teste definitivo: 34% control / 33% p2990 / 33% p2900.
-  const r = Math.random()
-  if (r < 0.34) return 'control'
-  return r < 0.67 ? 'p2990' : 'p2900'
+  // ✅ Teste encerrado 09/jul: p2990 (R$29,90 só música) venceu → é o padrão.
+  // Fallback (raro, só quando não há variante no pedido) também dá p2990.
+  return 'p2990'
 }
 
 const _VALID_PV = ['control', 'p2990', 'p2900', 'p29', 'p37', 'p47', 'p67']
