@@ -5,7 +5,7 @@ export const PLAN_DETAILS = {
   completa: { name: 'Música personalizada + vídeo', amount: 29.90 },
   // Planos do TESTE A/B de preço (música only + 1 edição, SEM vídeo).
   // Preço/entrega decididos no servidor (payPlans). Aqui só o display.
-  test29:   { name: 'Música personalizada', amount: 29.00 },
+  test29:   { name: 'Música personalizada', amount: 29.90 },
   test37:   { name: 'Música personalizada', amount: 37.00 },
   test47:   { name: 'Música personalizada', amount: 47.00 },
   test67:   { name: 'Música personalizada', amount: 67.00 },
@@ -23,7 +23,7 @@ export const PRICE_VARIANT_KEY = 'lc_price_variant'
 
 // Config de cada variante de teste: qual planKey mandar pro backend + display.
 export const TEST_VARIANTS = {
-  p29: { planKey: 'test29', price: 29.00, anchor: null }, // ATIVO — sem âncora (mostra "Valor único")
+  p29: { planKey: 'test29', price: 29.90, anchor: null }, // ATIVO — R$29,90 só música, sem âncora ("Valor único")
   p37: { planKey: 'test37', price: 37.00, anchor: 97.00 }, // encerrado (só p/ pedidos antigos)
   p47: { planKey: 'test47', price: 47.00, anchor: 97.00 }, // encerrado
   p67: { planKey: 'test67', price: 67.00, anchor: 127.00 }, // encerrado
