@@ -14,8 +14,9 @@ export const PLAN_DETAILS = {
 // TESTE A/B DE PREÇO
 // Atribui UMA vez por visitante (persistido em localStorage) e nunca reatribui.
 //   - 50% → 'control' (fluxo atual: musica R$19,90 + completa R$29,90 com vídeo)
-//   - 50% restante dividido IGUALMENTE em 3 → p37 / p47 / p67
-// Sorteio: r < 0.5 → control; senão os [0.5,1) viram 3 terços iguais.
+//   - 25% p37 · 25% p47  (p67 SAIU do teste 08/jul — convertia mal. Config de p67
+//     é mantida abaixo só pra renderizar pedidos p67 antigos + QA ?pv=p67.)
+// Sorteio: r < 0.5 → control; senão [0.5,0.75) → p37, [0.75,1) → p47.
 // ─────────────────────────────────────────────────────────────
 export const PRICE_VARIANT_KEY = 'lc_price_variant'
 
@@ -29,9 +30,8 @@ export const TEST_VARIANTS = {
 function drawVariant() {
   const r = Math.random()
   if (r < 0.5) return 'control'
-  // Mapeia [0.5, 1) em 3 terços iguais.
-  const t = Math.floor(((r - 0.5) / 0.5) * 3) // 0,1,2
-  return ['p37', 'p47', 'p67'][Math.min(2, t)]
+  // p67 saiu do teste: [0.5,0.75) → p37, [0.75,1) → p47.
+  return r < 0.75 ? 'p37' : 'p47'
 }
 
 const _VALID_PV = ['control', 'p37', 'p47', 'p67']
