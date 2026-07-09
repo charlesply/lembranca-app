@@ -2,7 +2,7 @@
 // Usado no App.jsx (Minhas Músicas + DeliveryPage) e no PaymentPage (/finalizar).
 // Regras (fonte de verdade = backend): 3 gerações de letra, 1 nova música/prévia.
 // CSS `.mse-*` mora em index.css (global).
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { API_URL } from '../core/infra'
 
 export const MSE_ENABLED = true
@@ -57,7 +57,11 @@ export function MusicSelfEdit({ order, onClose, onConfirmed }) {
     return () => { alive = false }
   }, [order.id])
 
-  const setField = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  // Rastreia o que o cliente MEXEU de propósito. O ritmo/ocasião/voz só são
+  // enviados no confirm se ele os tocou — senão o backend preserva o original
+  // (evita o bug de o ritmo mudar sozinho por causa do form pré-preenchido).
+  const touchedRef = useRef(new Set())
+  const setField = (k, v) => { touchedRef.current.add(k); setForm(f => ({ ...f, [k]: v })) }
   // Lista de ritmos: garante que o ritmo atual do pedido apareça mesmo fora da lista.
   const ritmoList = form.genre && !MSE_RITMOS.includes(form.genre) ? [form.genre, ...MSE_RITMOS] : MSE_RITMOS
   const ritmosShown = showMoreRitmos ? ritmoList : ritmoList.slice(0, MSE_RITMOS_CORE)
@@ -95,9 +99,18 @@ export function MusicSelfEdit({ order, onClose, onConfirmed }) {
     if (busy) return
     setBusy(true); setErr('')
     try {
+      // Envia SÓ os campos que o cliente mexeu. stylePicked=true apenas se ele
+      // escolheu ativamente ritmo/ocasião/voz → aí o backend altera o estilo.
+      // Se não tocou, o ritmo original é preservado (não muda sozinho).
+      const touched = touchedRef.current
+      const fields = {}
+      for (const k of ['honoree_name', 'story', 'genre', 'occasion', 'voice']) {
+        if (touched.has(k) && form[k]) fields[k] = form[k]
+      }
+      const stylePicked = ['genre', 'occasion', 'voice'].some(k => touched.has(k))
       const r = await fetch(`${API_URL}/api/order/${order.id}/edit/confirm`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lyrics, fields: { honoree_name: form.honoree_name, story: form.story, genre: form.genre, occasion: form.occasion, voice: form.voice } }),
+        body: JSON.stringify({ lyrics, fields, stylePicked }),
       }).then(x => x.json())
       if (!r || !r.ok) {
         setErr((r && r.message) || 'Não consegui iniciar a criação agora. Tenta de novo.')
