@@ -15,6 +15,7 @@ import { safeFilename } from '../../core/utils'
 import { useVideoPoster } from './hooks/useVideoPoster'
 import { fetchOrderStatus } from './api/deliveryService'
 import { MusicSelfEdit, MSE_ENABLED } from '../../components/MusicSelfEdit'
+import { ShareButton } from '../../components/ShareButton'
 
 // Detecta suporte a compartilhar arquivos via Web Share API.
 // Em mobile (Android Chrome, iOS Safari 15+) compartilha o ARQUIVO direto
@@ -173,14 +174,14 @@ export default function DeliveryPage() {
       <section key={key} className="dp-section">
         <h2>{heading}</h2>
         <audio controls preload="metadata" src={url} style={{ width: '100%' }} />
-        <div className="dp-btn-row">
-          <a className="dp-btn dp-btn-primary" href={url} download={filename}>⬇ Baixar MP3</a>
-          <button type="button" className="dp-btn dp-btn-wa" disabled={st.loading}
-                  onClick={() => handleShare(key, url, filename, 'audio/mpeg', label)}>
-            {st.loading ? <><Spinner /> Preparando…</> : <><WaIcon /> Compartilhar</>}
-          </button>
+        {/* Botões IGUAIS aos de Minhas Músicas (mesmo texto + mesmo ShareButton). */}
+        <div className="my-order-actions">
+          <a className="my-order-btn my-order-btn--primary" href={url} download={filename}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Salvar Música
+          </a>
+          <ShareButton url={url} kind="audio" honoreeName={honoree} title={label} label="Enviar no WhatsApp" variant="whatsapp" />
         </div>
-        {st.msg && <p className="dp-share-msg">{st.msg}</p>}
       </section>
     )
   }
@@ -218,19 +219,13 @@ export default function DeliveryPage() {
               <video controls preload="metadata" src={video} playsInline
                      poster={videoPoster || undefined}
                      style={{ width: '100%', borderRadius: 12, background: '#000' }} />
-              <div className="dp-btn-row">
-                <a className="dp-btn dp-btn-primary" href={video} download={filename}>
-                  ⬇ Baixar MP4
+              <div className="my-order-actions">
+                <a className="my-order-btn my-order-btn--primary" href={video} download={filename}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                  Salvar Vídeo
                 </a>
-                <button type="button" className="dp-btn dp-btn-wa"
-                        disabled={st.loading}
-                        onClick={() => handleShare(key, video, filename, 'video/mp4', label)}>
-                  {st.loading
-                    ? <><Spinner /> Preparando…</>
-                    : <><WaIcon /> Compartilhar</>}
-                </button>
+                <ShareButton url={video} kind="video" honoreeName={honoree} title={label} label="Enviar no WhatsApp" variant="whatsapp" />
               </div>
-              {st.msg && <p className="dp-share-msg">{st.msg}</p>}
             </section>
           )
         })() : (paid && data.plan === 'completa') && (
