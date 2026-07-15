@@ -17,6 +17,7 @@ import { getPriceVariant, isTestVariant, TEST_VARIANTS } from './constants'
 // Self-edit: cliente ajusta a própria prévia (1×) antes de pagar — mesmo componente
 // usado em Minhas Músicas / DeliveryPage.
 import { MusicSelfEdit, MSE_ENABLED } from '../../components/MusicSelfEdit'
+import CheckoutCpfBox from './components/CheckoutCpfBox'
 
 // Ordem importa: o primeiro fica em cima na UI. Completa e o destaque (badge
 // "Mais escolhido") e o default pre-selecionado.
@@ -72,6 +73,10 @@ export default function PaymentPage() {
   const [pix, setPix] = useState(null)
   const [loadingPix, setLoadingPix] = useState(false)
   const [copied, setCopied] = useState(false)
+  // Caixa de CPF (variante B do A/B de checkout) — backend responde needs_cpf.
+  const [needCpf, setNeedCpf] = useState(null)
+  const [cpfSubmitting, setCpfSubmitting] = useState(false)
+  const [cpfError, setCpfError] = useState('')
   const [confirming, setConfirming] = useState(false)
   // Self-edit da prévia (1×): editor aberto? / cliente acabou de confirmar?
   const [editing, setEditing] = useState(false)
@@ -139,10 +144,13 @@ export default function PaymentPage() {
 
   const generatePix = useCallback(async () => {
     if (!id) return
-    setLoadingPix(true); setPix(null); setCopied(false)
+    setLoadingPix(true); setPix(null); setCopied(false); setCpfError('')
     try {
       const data = await createPix(id, plan, priceVariant)
+      // Variante B do A/B → backend pede CPF: mostra a caixa em vez do PIX.
+      if (data?.needs_cpf) { setNeedCpf({ prefilledEmail: data.prefilled_email || '', honoree: data.honoree || '' }); return }
       if (!data?.brCode) throw new Error('falha')
+      setNeedCpf(null)
       setPix({ brCode: data.brCode, brCodeBase64: data.brCodeBase64, expiresAt: data.expiresAt })
     } catch (e) {
       setErr('Não conseguimos gerar o PIX agora. Tenta de novo em alguns segundos.')
@@ -150,6 +158,22 @@ export default function PaymentPage() {
       setLoadingPix(false)
     }
   }, [id, plan, priceVariant])
+
+  // Envio da caixa de CPF → reenvia o create com cpf+email → gera o PIX (ASAAS).
+  const onCpfSubmit = async ({ email, cpf }) => {
+    if (!id) return
+    setCpfSubmitting(true); setCpfError('')
+    try {
+      const data = await createPix(id, plan, priceVariant, { cpf, email })
+      if (!data?.brCode) { setCpfError(data?.message || 'CPF/CNPJ inválido — confere os números 💛'); return }
+      setNeedCpf(null)
+      setPix({ brCode: data.brCode, brCodeBase64: data.brCodeBase64, expiresAt: data.expiresAt })
+    } catch (e) {
+      setCpfError('Não conseguimos gerar o PIX agora. Tenta de novo.')
+    } finally {
+      setCpfSubmitting(false)
+    }
+  }
 
   const copyPix = async () => {
     if (!pix?.brCode) return
@@ -179,7 +203,7 @@ export default function PaymentPage() {
   // Se a prévia falhou (nunca gerou), mostra mensagem de problema (o backend
   // também bloqueia o /api/pay/create — trava dupla).
   const semPrevia = !preview && !regenerating && !editing
-  const showPlans = !!preview && !pix && !confirming && !editing && !regenerating
+  const showPlans = !!preview && !pix && !confirming && !editing && !regenerating && !needCpf
 
   return (
     <Shell>
@@ -261,6 +285,18 @@ export default function PaymentPage() {
               <a href="/termos.html" target="_blank" rel="noopener noreferrer" style={{ color: '#CC785C', textDecoration: 'underline' }}>Termos de Uso</a>,
               incluindo que é um produto personalizado, ouvido em prévia gratuita antes da compra.
             </p>
+          </section>
+        )}
+
+        {needCpf && !pix && !confirming && (
+          <section className="pp-section" style={{ background: 'transparent', border: 'none', padding: 0 }}>
+            <CheckoutCpfBox
+              honoreeName={needCpf.honoree || honoree}
+              prefilledEmail={needCpf.prefilledEmail}
+              onSubmit={onCpfSubmit}
+              submitting={cpfSubmitting}
+              errorMsg={cpfError}
+            />
           </section>
         )}
 

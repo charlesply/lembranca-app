@@ -6,10 +6,13 @@ export async function fetchOrderStatus(id) {
   return apiGet(`/api/order/${id}/status`)
 }
 
-// Cria PIX vinculado ao orderId. Retorna { brCode, brCodeBase64, expiresAt }.
+// Cria PIX vinculado ao orderId. Retorna { brCode, brCodeBase64, expiresAt } OU
+// { needs_cpf:true, prefilled_email, honoree } quando o pedido é variante B do
+// teste A/B de checkout (aí o front mostra o CheckoutCpfBox e reenvia com cpf).
 // priceVariant (lc_price_variant) vai junto pra medir conversão do teste A/B.
-export async function createPix(orderId, plan, priceVariant) {
-  return apiPost('/api/pay/create', { orderId, plan, priceVariant }, { retries: 2 })
+// extra = { cpf, email } na 2ª chamada (após a caixa de CPF).
+export async function createPix(orderId, plan, priceVariant, extra = {}) {
+  return apiPost('/api/pay/create', { orderId, plan, priceVariant, ...extra }, { retries: 2 })
 }
 
 // Polling de status de pagamento. Retorna { paid, status, abacate_status }.

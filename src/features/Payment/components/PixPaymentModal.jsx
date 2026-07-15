@@ -15,6 +15,7 @@ import { API_URL } from '../../../core/infra'
 import { PLAN_DETAILS, getPriceVariant, isTestVariant, TEST_VARIANTS } from '../constants'
 import { submitPaymentProof, checkPaymentStatus } from '../api/paymentService'
 import { fetchOrderStatus } from '../api/paymentService'
+import CheckoutCpfBox from './CheckoutCpfBox'
 
 export default function PixPaymentModal({
   open, onClose, planKey = 'musica', orderId, honoreeName, customerName, customerPhone,
@@ -149,36 +150,56 @@ export default function PixPaymentModal({
   const mm = String(Math.floor(secsLeft / 60)).padStart(2, '0')
   const ss = String(secsLeft % 60).padStart(2, '0')
 
-  // PIX agora vem da AbacatePay (confirmação automática).
+  // PIX agora vem da AbacatePay/Woovi/ASAAS (confirmação automática).
   const [brCode, setBrCode] = useState('')
   const [qrSrc, setQrSrc] = useState('')
   const [payError, setPayError] = useState('')
+  // Caixa de CPF (variante B do A/B de checkout). needCpf preenchido quando o
+  // backend responde needs_cpf → mostramos o CheckoutCpfBox antes do QR.
+  const [needCpf, setNeedCpf] = useState(null)
+  const [cpfSubmitting, setCpfSubmitting] = useState(false)
+  const [cpfError, setCpfError] = useState('')
+
+  // Chama /api/pay/create. Sem extra = 1ª chamada (pode voltar needs_cpf).
+  // Com { cpf, email } = após a caixa. Retorna {ok} | {needCpf} | {error}.
+  const doCreatePix = async (extra) => {
+    try {
+      const r = await fetch(`${API_URL}/api/pay/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId, plan: selectedPlan, priceVariant, ...(extra || {}) }),
+      })
+      const j = await r.json().catch(() => ({}))
+      if (j?.needs_cpf) { setNeedCpf({ prefilledEmail: j.prefilled_email || '', honoree: j.honoree || honoreeName || '' }); return { needCpf: true } }
+      if (!r.ok || !j?.brCode) {
+        // 409 'sem_previa' = música/prévia ainda não pronta → mensagem específica.
+        return { error: j?.message || (j?.error === 'sem_previa' ? 'A prévia da sua música ainda não ficou pronta.' : j?.error) || 'Falha ao gerar PIX' }
+      }
+      setNeedCpf(null); setBrCode(j.brCode); setQrSrc(j.brCodeBase64 || '')
+      return { ok: true }
+    } catch (e) {
+      return { error: e?.message || 'Erro de rede' }
+    }
+  }
+
   useEffect(() => {
     if (!open || !orderId || !selectedPlan) return
     let cancelled = false
-    setBrCode(''); setQrSrc(''); setPayError('')
+    setBrCode(''); setQrSrc(''); setPayError(''); setNeedCpf(null); setCpfError('')
     ;(async () => {
-      try {
-        const r = await fetch(`${API_URL}/api/pay/create`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orderId, plan: selectedPlan, priceVariant }),
-        })
-        const j = await r.json()
-        if (cancelled) return
-        if (!r.ok || !j?.brCode) {
-          // 409 'sem_previa' = música/prévia ainda não pronta → mensagem específica.
-          setPayError(j?.message || (j?.error === 'sem_previa' ? 'A prévia da sua música ainda não ficou pronta.' : j?.error) || 'Falha ao gerar PIX')
-          return
-        }
-        setBrCode(j.brCode)
-        setQrSrc(j.brCodeBase64 || '')
-      } catch (e) {
-        if (!cancelled) setPayError(e?.message || 'Erro de rede')
-      }
+      const res = await doCreatePix()
+      if (!cancelled && res?.error) setPayError(res.error)
     })()
     return () => { cancelled = true }
-  }, [open, orderId, selectedPlan])
+  }, [open, orderId, selectedPlan]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Envio da caixa de CPF → reenvia o create com cpf+email → gera o PIX (ASAAS).
+  const onCpfSubmit = async ({ email, cpf }) => {
+    setCpfSubmitting(true); setCpfError('')
+    const res = await doCreatePix({ cpf, email })
+    setCpfSubmitting(false)
+    if (res?.error) setCpfError(res.error)
+  }
 
   if (!open) return null
 
@@ -283,7 +304,17 @@ export default function PixPaymentModal({
           <button type="button" className="pix-modal-copy" onClick={onClose} style={{ marginTop: 10 }}>Fechar</button>
         </div>}
 
-        {step === 'pay' && !payError && <>
+        {step === 'pay' && !payError && needCpf && (
+          <CheckoutCpfBox
+            honoreeName={needCpf.honoree || honoreeName}
+            prefilledEmail={needCpf.prefilledEmail}
+            onSubmit={onCpfSubmit}
+            submitting={cpfSubmitting}
+            errorMsg={cpfError}
+          />
+        )}
+
+        {step === 'pay' && !payError && !needCpf && <>
         {!testVariant && <button type="button" className="pix-step-back" onClick={() => setStep('plan')}>← Trocar plano</button>}
         <span className="pix-modal-eyebrow">Pagamento PIX</span>
         <h2 id="pix-modal-title" className="pix-modal-title">Desbloquear música</h2>
