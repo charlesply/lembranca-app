@@ -596,6 +596,7 @@ function VinylDisc({ size = 56, spinning = false, locked = false }) {
    Substitui o <audio controls> nativo (que é feio e não combina com o DS). */
 function MiniPlayer({ src, capSec }) {
   const audioRef = useRef(null)
+  const retryRef = useRef(0)
   const [playing, setPlaying] = useState(false)
   const [t, setT] = useState(0)
   const [dur, setDur] = useState(0)
@@ -604,8 +605,18 @@ function MiniPlayer({ src, capSec }) {
   useEffect(() => {
     const a = audioRef.current
     if (!a) return
+    retryRef.current = 0
     a.pause(); setPlaying(false); setT(0); setDur(0)
   }, [src])
+
+  // Retry se o áudio falhar ao carregar — o cdn1 pode levar alguns segundos pra
+  // publicar o arquivo logo após a música completar. Tenta recarregar até 4x.
+  const onAudioError = () => {
+    const a = audioRef.current
+    if (!a || retryRef.current >= 4) return
+    retryRef.current++
+    setTimeout(() => { try { a.load() } catch (_) {} }, 1500 * retryRef.current)
+  }
 
   // Cap da prévia (não-paga): a música por baixo é a COMPLETA, então o teto de
   // 0:50 é aplicado AQUI no player. Ao passar, pausa e segura no limite.
@@ -661,6 +672,7 @@ function MiniPlayer({ src, capSec }) {
       <audio ref={audioRef} src={src} preload="metadata"
         onTimeUpdate={e => setT(e.currentTarget.currentTime)}
         onLoadedMetadata={e => setDur(e.currentTarget.duration || 0)}
+        onError={onAudioError}
         onEnded={() => { setPlaying(false); setT(0) }}
       />
     </div>
@@ -1593,6 +1605,14 @@ function BigPlayer({ src, maxSec, fullSec, label, onPlayingChange, onPreviewEnd 
   const [t, setT] = useState(0)
   const [dur, setDur] = useState(0)
   const endedFiredRef = useRef(false)
+  const retryRef = useRef(0)
+  // Retry se o áudio falhar (cdn1 pode demorar segundos pra publicar pós-complete).
+  const onAudioError = () => {
+    const a = audioRef.current
+    if (!a || retryRef.current >= 4) return
+    retryRef.current++
+    setTimeout(() => { try { a.load() } catch (_) {} }, 1500 * retryRef.current)
+  }
 
   useEffect(() => { onPlayingChange && onPlayingChange(playing) }, [playing, onPlayingChange])
 
@@ -1670,7 +1690,8 @@ function BigPlayer({ src, maxSec, fullSec, label, onPlayingChange, onPreviewEnd 
       </div>
       <audio ref={audioRef} src={src} preload="metadata"
         onTimeUpdate={e => setT(e.currentTarget.currentTime)}
-        onLoadedMetadata={e => setDur(e.currentTarget.duration || 0)}
+        onLoadedMetadata={e => { retryRef.current = 0; setDur(e.currentTarget.duration || 0) }}
+        onError={onAudioError}
         onEnded={() => {
           setPlaying(false); setT(0)
           // Dispara onPreviewEnd uma única vez (caso o audio termine
