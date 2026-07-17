@@ -314,7 +314,18 @@ export default function PixPaymentModal({
           />
         )}
 
-        {step === 'pay' && !payError && !needCpf && <>
+        {/* Enquanto o /api/pay/create está EM VOO (ainda não sabemos se pede CPF
+            ou já tem o QR), mostra spinner — evita o FLASH da tela de QR VAZIA
+            antes da caixa de CPF aparecer (bug do popup piscando). */}
+        {step === 'pay' && !payError && !needCpf && !brCode && (
+          <div className="pix-state pix-state--sending">
+            <div className="pix-spinner" aria-hidden="true" />
+            <h3>Gerando seu PIX…</h3>
+            <p>Só um instante 💛</p>
+          </div>
+        )}
+
+        {step === 'pay' && !payError && !needCpf && brCode && <>
         {!testVariant && <button type="button" className="pix-step-back" onClick={() => setStep('plan')}>← Trocar plano</button>}
         <span className="pix-modal-eyebrow">Pagamento PIX</span>
         <h2 id="pix-modal-title" className="pix-modal-title">Desbloquear música</h2>
