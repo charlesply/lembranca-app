@@ -594,7 +594,7 @@ function VinylDisc({ size = 56, spinning = false, locked = false }) {
 
 /* Mini-player customizado · botão play terracota + barra progresso + tempo.
    Substitui o <audio controls> nativo (que é feio e não combina com o DS). */
-function MiniPlayer({ src }) {
+function MiniPlayer({ src, capSec }) {
   const audioRef = useRef(null)
   const [playing, setPlaying] = useState(false)
   const [t, setT] = useState(0)
@@ -607,19 +607,32 @@ function MiniPlayer({ src }) {
     a.pause(); setPlaying(false); setT(0); setDur(0)
   }, [src])
 
+  // Cap da prévia (não-paga): a música por baixo é a COMPLETA, então o teto de
+  // 0:50 é aplicado AQUI no player. Ao passar, pausa e segura no limite.
+  useEffect(() => {
+    if (!capSec) return
+    if (t >= capSec) { const a = audioRef.current; if (a) a.pause(); setPlaying(false); setT(capSec) }
+  }, [t, capSec])
+
+  // Duração efetiva da barra: com cap, a barra representa só o trecho da prévia.
+  const lim = capSec ? Math.min(capSec, dur || capSec) : dur
+
   const toggle = () => {
     const a = audioRef.current
     if (!a) return
     if (playing) { a.pause(); setPlaying(false) }
-    else { a.play().then(() => setPlaying(true)).catch(() => {}) }
+    else {
+      if (capSec && a.currentTime >= capSec - 0.3) { a.currentTime = 0; setT(0) }  // recomeça do 0 se parou no fim da prévia
+      a.play().then(() => setPlaying(true)).catch(() => {})
+    }
   }
 
   const seek = (e) => {
     const a = audioRef.current
-    if (!a || !dur) return
+    if (!a || !lim) return
     const rect = e.currentTarget.getBoundingClientRect()
     const pct = (e.clientX - rect.left) / rect.width
-    a.currentTime = Math.max(0, Math.min(dur, pct * dur))
+    a.currentTime = Math.max(0, Math.min(lim, pct * lim))
   }
 
   const fmt = (s) => {
@@ -628,7 +641,7 @@ function MiniPlayer({ src }) {
     return `${m}:${String(sec).padStart(2, '0')}`
   }
 
-  const pct = dur > 0 ? (t / dur) * 100 : 0
+  const pct = lim > 0 ? Math.min(100, (t / lim) * 100) : 0
 
   return (
     <div className="mini-player">
@@ -644,7 +657,7 @@ function MiniPlayer({ src }) {
         aria-valuemin={0} aria-valuemax={Math.round(dur || 0)} aria-valuenow={Math.round(t || 0)}>
         <div className="mini-player-fill" style={{ width: `${pct}%` }} />
       </div>
-      <span className="mini-player-time">{fmt(t)} / {fmt(dur)}</span>
+      <span className="mini-player-time">{fmt(t)} / {fmt(lim)}</span>
       <audio ref={audioRef} src={src} preload="metadata"
         onTimeUpdate={e => setT(e.currentTarget.currentTime)}
         onLoadedMetadata={e => setDur(e.currentTarget.duration || 0)}
@@ -988,7 +1001,11 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
     const regen = cur.edit_status === 'regenerating' || (justSent[selectedId] && !['done', 'error'].includes(cur.edit_status))
     // Também polla enquanto o vídeo (completa paga) ainda não chegou — compra nova OU pós-edit.
     const videoPending = cur.plan === 'completa' && !!cur.paid_at && !cur.video_brinde_url
-    if (!regen && !videoPending) return
+    // PAGO mas música ainda NÃO pronta (pagou durante o streaming): polla até a
+    // música completa aparecer, pra trocar o aviso "pronta em 2 min" pelos players.
+    const hasAudio = !!cur.original_audio_url || (Array.isArray(cur.full_audio_urls) && cur.full_audio_urls.filter(Boolean).length > 0)
+    const audioPending = !!cur.paid_at && !hasAudio
+    if (!regen && !videoPending && !audioPending) return
     let alive = true
     const tick = async () => {
       try {
@@ -997,11 +1014,13 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
         setOverrides(prev => ({ ...prev, [selectedId]: { ...(prev[selectedId] || {}), ...d } }))
       } catch (_) {}
     }
-    const iv = setInterval(tick, 15000)
+    // 8s enquanto a música paga não chegou (a promessa "até 2 min" tem que ser
+    // responsiva); 15s pra regen/vídeo (mais lentos por natureza).
+    const iv = setInterval(tick, audioPending ? 8000 : 15000)
     tick()
     return () => { alive = false; clearInterval(iv) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, justSent, overrides[selectedId] && overrides[selectedId].edit_status, overrides[selectedId] && overrides[selectedId].video_brinde_url])
+  }, [selectedId, justSent, overrides[selectedId] && overrides[selectedId].edit_status, overrides[selectedId] && overrides[selectedId].video_brinde_url, overrides[selectedId] && overrides[selectedId].original_audio_url])
 
   // Formata data BR: 03/06/2026 às 13:45
   const fmtDate = (iso) => {
@@ -1086,7 +1105,13 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
           <>
             {/* NOVAS em destaque (quando já prontas); senão versões normais */}
             {showNewLayout && <div className="my-order-vgroup my-order-vgroup--new">✨ Suas versões novas</div>}
-            {versions.map((url, i) => renderVersion(
+            {versions.length === 0 ? (
+              // Pagou durante o streaming e a música completa ainda está saindo.
+              // O poll (8s) atualiza sozinho e troca este aviso pelos players.
+              <div className="my-order-videogen" aria-live="polite">
+                🎵 Sua música completa está sendo finalizada — fica pronta em <strong>até 2 minutos</strong> e aparece aqui sozinha, sem precisar atualizar 💛
+              </div>
+            ) : versions.map((url, i) => renderVersion(
               url, `n${i}`,
               showNewLayout ? `Nova ${i + 1}` : (versions.length > 1 ? `Versão ${i + 1}` : 'Sua música'),
               `lembrancacantada-${safeName}-v${i + 1}.mp3`))}
@@ -1123,7 +1148,7 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
           // NÃO PAGO: prévia (nova, se ajustou) + finalizar pagamento abaixo.
           <div className="my-order-version">
             {/* Durante a regeneração a prévia antiga some — só reaparece (como nova) quando pronta. */}
-            {o.preview_audio_url && !regenerating && <><span className="my-order-version-label">{o.self_edit_used ? '✨ Prévia nova' : 'Prévia'}</span><MiniPlayer src={o.preview_audio_url} label="Prévia (0:50)" /></>}
+            {o.preview_audio_url && !regenerating && <><span className="my-order-version-label">{o.self_edit_used ? '✨ Prévia nova' : 'Prévia'}</span><MiniPlayer src={o.preview_audio_url} label="Prévia (0:50)" capSec={50} /></>}
             <div className="my-order-actions">
               <button type="button" className="my-order-btn my-order-btn--primary" onClick={() => onPayPending && onPayPending(o)}>
                 Finalizar pagamento →
@@ -2407,18 +2432,19 @@ export default function App() {
       let msgIdx = 0
 
       // ═══ Tick visual contínuo (250ms) — desacoplado do polling ═══
-      // Em vez de pular de 0 → 7.5 → 12 etc a cada poll de 5s, a barra avança
-      // SUAVE a cada 250ms usando curva exponencial easeOut:
-      //   progress = 95 * (1 - exp(-elapsed / TAU))
-      //   com TAU=55:  ~10% em 5s, ~33% em 20s, ~63% em 60s, ~86% em 120s, ~95% em 180s
-      // Dá sensação real de movimento desde o primeiro segundo.
+      // Curva em 3 fases (casada com a prévia por streaming, que chega ~50s):
+      //   • 0→90%  em ~20s  (easeOut: rápido, dá sensação de avanço imediato)
+      //   • 90→99% em +25s  (devagar, "afinando os detalhes")
+      //   • segura em 99%    até a prévia aparecer (o poll crava 100% e troca de tela)
+      // Nunca regride (Math.max preserva saltos que o backend possa setar).
       const startMs = Date.now()
-      const TAU = 55  // controla a velocidade da curva — menor = mais rápido
       tickId = setInterval(() => {
-        const elapsedS = (Date.now() - startMs) / 1000
-        const target = 95 * (1 - Math.exp(-elapsedS / TAU))
-        // Math.max preserva qualquer salto pra >target que o backend possa setar
-        setProgress(prev => Math.max(prev, Math.min(95, target)))
+        const s = (Date.now() - startMs) / 1000
+        let target
+        if (s <= 20)      target = 90 * (1 - Math.pow(1 - s / 20, 2))  // easeOut → 90% aos 20s
+        else if (s <= 45) target = 90 + 9 * ((s - 20) / 25)            // 90→99% dos 20s aos 45s
+        else              target = 99                                   // segura em 99%
+        setProgress(prev => Math.max(prev, Math.min(99, target)))
       }, 250)
 
       for (let i = 0; i < 72; i++) { // max 6 min (72 * 5s)
@@ -2827,7 +2853,7 @@ export default function App() {
       pushBubble({ kind: 'menu' })
     } else if (o.preview_audio_url) {
       await biaSay(`Achei a sua música pra *${nome}*! 🥰 Aqui a *prévia*:`)
-      pushBubble({ kind: 'audio', src: o.preview_audio_url, label: `Prévia · ${nome}` })
+      pushBubble({ kind: 'audio', src: o.preview_audio_url, label: `Prévia · ${nome}`, cap: 50 })
       await biaSay('Pra liberar a *versão completa* (sem aviso) + o *vídeo*, é só finalizar o pagamento 👇')
       const plan = o._plan || 'musica'
       pushBubble({ kind: 'pay', orderId: o.id, plan, planName: o._planName || 'Música', planPrice: o._planPrice || '19,90' })
@@ -2972,7 +2998,7 @@ export default function App() {
       setChatView('done'); setChatStep(STAGE_BUSY)
       await biaSay(`Opa! 💜 Vi que você já pediu uma prévia pra *${r.order.honoree_name || 'alguém especial'}* nas últimas 24h.`)
       await biaSay('Pra criar uma *música nova*, é só liberar essa primeiro 👇 Aí você pode pedir quantas quiser! ✨')
-      if (r.order.preview_audio_url) pushBubble({ kind: 'audio', src: r.order.preview_audio_url, label: `Prévia · ${r.order.honoree_name || ''}` })
+      if (r.order.preview_audio_url) pushBubble({ kind: 'audio', src: r.order.preview_audio_url, label: `Prévia · ${r.order.honoree_name || ''}`, cap: 50 })
       pushBubble({ kind: 'pay', orderId: r.order.id, plan: 'musica', planName: 'Música', planPrice: '19,90' })
       return
     }
@@ -3055,7 +3081,7 @@ export default function App() {
     if (preview) {
       playDing()  // 🔔 som de notificação da Bia
       await biaSay(`Ó, ficou lindo! 🥹 Aqui a prévia da música pra *${d.honoreeName}*:`)
-      pushBubble({ kind: 'audio', src: preview, label: `Prévia · ${d.honoreeName}`, ding: true })
+      pushBubble({ kind: 'audio', src: preview, label: `Prévia · ${d.honoreeName}`, ding: true, cap: 50 })
       await biaSay('Curtiu? Pra liberar a *versão completa* pra você baixar e mandar, é só finalizar o pagamento aqui 👇')
       pushBubble({ kind: 'pay', orderId, plan: d.plan || 'musica', planName: d.planName || 'Música', planPrice: d.planPrice || '19,90' })
     } else if (queued) {
@@ -3682,7 +3708,8 @@ export default function App() {
                       if (m.kind === 'audio') return (
                         <div key={i} className="chat-bubble bia chat-media">
                           <div className="chat-media-top"><span className="chat-media-ic"><IconMusic s={15} /></span>{m.label}</div>
-                          <audio controls preload="none" src={m.src} onPlay={() => track('AudioPlay', { label: m.label || 'audio' }, true)} />
+                          <audio controls preload="none" src={m.src} onPlay={() => track('AudioPlay', { label: m.label || 'audio' }, true)}
+                            onTimeUpdate={m.cap ? (e => { const a = e.currentTarget; if (a.currentTime > m.cap) { a.currentTime = m.cap; a.pause(); } }) : undefined} />
                           <span className="chat-meta">{m.t}</span>
                         </div>
                       )
