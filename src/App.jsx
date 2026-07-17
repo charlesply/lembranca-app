@@ -2490,19 +2490,16 @@ export default function App() {
       let msgIdx = 0
 
       // ═══ Tick visual contínuo (250ms) — desacoplado do polling ═══
-      // Curva em 3 fases (casada com a prévia por streaming, que chega ~50s):
-      //   • 0→90%  em ~20s  (easeOut: rápido, dá sensação de avanço imediato)
-      //   • 90→99% em +25s  (devagar, "afinando os detalhes")
-      //   • segura em 99%    até a prévia aparecer (o poll crava 100% e troca de tela)
-      // Nunca regride (Math.max preserva saltos que o backend possa setar).
+      // Distribui 0→99% LINEARMENTE ao longo de ~55s (tempo médio até a prévia
+      // ficar pronta hoje, ~40-60s). O 100% real vem quando a prévia aparece
+      // (o poll crava 100% e troca de tela) — a barra enche até o topo bem na
+      // hora. Segura em 99% se passar de 55s. Nunca regride (Math.max).
+      const PROGRESS_SECS = 55
       const startMs = Date.now()
       tickId = setInterval(() => {
         const s = (Date.now() - startMs) / 1000
-        let target
-        if (s <= 20)      target = 90 * (1 - Math.pow(1 - s / 20, 2))  // easeOut → 90% aos 20s
-        else if (s <= 45) target = 90 + 9 * ((s - 20) / 25)            // 90→99% dos 20s aos 45s
-        else              target = 99                                   // segura em 99%
-        setProgress(prev => Math.max(prev, Math.min(99, target)))
+        const target = Math.min(99, (s / PROGRESS_SECS) * 100)
+        setProgress(prev => Math.max(prev, target))
       }, 250)
 
       for (let i = 0; i < 72; i++) { // max 6 min (72 * 5s)
