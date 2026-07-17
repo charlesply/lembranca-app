@@ -9,7 +9,7 @@
 //   - getOrderId() regex REMOVIDO -> useParams() do router
 //   - fetchs centralizados em api/paymentService
 //   - polling extraido pra hook usePixPolling
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { fetchOrderStatus, createPix } from './api/paymentService'
 import { usePixPolling } from './hooks/usePixPolling'
@@ -18,6 +18,7 @@ import { getPriceVariant, isTestVariant, TEST_VARIANTS } from './constants'
 // usado em Minhas Músicas / DeliveryPage.
 import { MusicSelfEdit, MSE_ENABLED } from '../../components/MusicSelfEdit'
 import CheckoutCpfBox from './components/CheckoutCpfBox'
+import PreviewPlayer from './components/PreviewPlayer'
 
 // Ordem importa: o primeiro fica em cima na UI. Completa e o destaque (badge
 // "Mais escolhido") e o default pre-selecionado.
@@ -81,6 +82,9 @@ export default function PaymentPage() {
   // Self-edit da prévia (1×): editor aberto? / cliente acabou de confirmar?
   const [editing, setEditing] = useState(false)
   const [justSent, setJustSent] = useState(false)
+  // Ref da seção de pagamento — pra rolar até ela quando a prévia bate os 0:50
+  // (mesmo comportamento do checkout: ao acabar a prévia, empurra pro pagamento).
+  const payRef = useRef(null)
 
   // 1) Carrega dados da order
   useEffect(() => {
@@ -220,7 +224,11 @@ export default function PaymentPage() {
         {preview && !editing && !regenerating && (
           <section className="pp-section">
             <h2>🎧 {order.self_edit_used ? 'Sua prévia nova' : 'Sua prévia'}</h2>
-            <audio controls preload="metadata" src={preview} style={{ width: '100%' }} />
+            {/* Prévia = música completa (cdn1) capada em 0:50 NO PLAYER. Player
+                custom com teto rígido (o <audio controls> nativo deixava arrastar
+                e ouvir a música inteira no iOS). Ao bater 0:50, rola pro pagamento. */}
+            <PreviewPlayer src={preview} maxSec={50}
+              onCap={() => { try { payRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }) } catch (_) {} }} />
             <p className="pp-hint">A versão final é mais longa, em alta qualidade e sem marca d'água.</p>
           </section>
         )}
@@ -263,7 +271,7 @@ export default function PaymentPage() {
         )}
 
         {showPlans && (
-          <section className="pp-section">
+          <section className="pp-section" ref={payRef}>
             <h2>📦 Escolha seu pacote</h2>
             <div className="pp-plans">
               {PLANS.map((p) => (

@@ -18,11 +18,12 @@
 //   - usePixPolling do feature Payment
 //   - fetchOrderStatus do feature Delivery
 //   - estetica/tokens do PaymentPage (cores #CC785C, #fef9f5)
-import React, { useEffect, useState, useCallback, useMemo } from 'react'
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { fetchOrderStatus } from '../Delivery/api/deliveryService'
 import { createPix } from '../Payment/api/paymentService'
 import { usePixPolling } from '../Payment/hooks/usePixPolling'
+import PreviewPlayer from '../Payment/components/PreviewPlayer'
 import { safeFilename } from '../../core/utils'
 
 const PROMO_PLAN_KEY = 'promo_recovery_jun26'
@@ -48,6 +49,7 @@ export default function PromoPage() {
   const [err, setErr] = useState(null)
   const [pix, setPix] = useState(null)
   const [loadingPix, setLoadingPix] = useState(false)
+  const payRef = useRef(null) // rola até o preço quando a prévia bate 0:50
   const [copied, setCopied] = useState(false)
   const [unlocked, setUnlocked] = useState(false)
   const [confirming, setConfirming] = useState(false)
@@ -244,14 +246,17 @@ export default function PromoPage() {
         {preview && (
           <section className="pr-section pr-section-preview">
             <h2>🎧 Ouça sua prévia</h2>
-            <audio controls preload="metadata" src={preview} style={{ width: '100%' }} />
+            {/* Player custom com teto rígido 0:50 (o <audio> nativo deixava ouvir
+                a música inteira no iOS arrastando a barra). Ao bater, rola pro preço. */}
+            <PreviewPlayer src={preview} maxSec={50}
+              onCap={() => { try { payRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }) } catch (_) {} }} />
             <p className="pr-hint">A versão final é mais longa, em alta qualidade e sem marca d'água.</p>
           </section>
         )}
 
         {!pix && !confirming && (
           <>
-            <div className="pr-price-box">
+            <div className="pr-price-box" ref={payRef}>
               <div className="pr-price-strike">De R$ {PROMO_ORIGINAL_PRICE.toFixed(2).replace('.', ',')}</div>
               <div className="pr-price-main">R$ {PROMO_PRICE.toFixed(2).replace('.', ',')}</div>
               <div className="pr-price-includes">
