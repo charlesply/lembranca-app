@@ -2403,6 +2403,7 @@ export default function App() {
       let lastStatus = 'generating'
       let previewAudioUrl = null
       let originalAudioUrl = null
+      let streamShown = false  // prévia em streaming já exibida? (first-write-wins, não troca a fonte tocando)
       let msgIdx = 0
 
       // ═══ Tick visual contínuo (250ms) — desacoplado do polling ═══
@@ -2438,12 +2439,51 @@ export default function App() {
             setClientContacted(true)
             console.log('[HC] ✅ CLIENT_CONTACTED detectado!')
           }
-          console.log(`[HC] 📊 Poll #${i+1}: status=${row.status}, preview=${row.preview_audio_url || 'null'}, original=${row.original_audio_url || 'null'}, contactado=${!!row.client_contacted_at}`)
+          console.log(`[HC] 📊 Poll #${i+1}: status=${row.status}, preview=${row.preview_audio_url || 'null'}, stream=${row.stream_preview_url || 'null'}, original=${row.original_audio_url || 'null'}, contactado=${!!row.client_contacted_at}`)
+
+          // ═══ PRÉVIA EM STREAMING (fase "first" do Suno, ~15-30s) ═══
+          // Assim que a URL ao vivo aparece, joga o cliente pra prévia tocando JÁ
+          // (BigPlayer corta em 0:50). Segue o poll em background pra pegar o corte
+          // real + destravar o pagamento, SEM trocar a fonte que já está tocando.
+          if (!streamShown && row.stream_preview_url && row.status !== 'preview_sent') {
+            streamShown = true
+            previewAudioUrl = row.stream_preview_url
+            clearInterval(tickId); setProgress(100); setStatusMsg('✅ Prévia pronta!')
+            setResultData({
+              title: `Para ${honoreeName}`,
+              honoreeName,
+              tags,
+              preview_url: row.stream_preview_url,
+              original_url: null,
+              preview_error: null,
+              lyrics: null,
+              whatsapp: !!phone,
+              orderId,
+              streaming: true,
+              customerName: row.customer_name || formData.clientName || null,
+              phone: row.phone || phone || null,
+            })
+            setView('result')
+            window.scrollTo({ top: 0, behavior: 'smooth' })
+            console.log('[HC] ⚡ STREAMING preview exibida ao vivo — seguindo poll em background')
+            continue // NÃO dá break — segue o poll pra completar o corte real
+          }
 
           if (row.status === 'preview_sent') {
-            previewAudioUrl = row.preview_audio_url || null
             originalAudioUrl = row.original_audio_url || null
-            console.log('[HC] ✅ PREVIEW_SENT! preview:', previewAudioUrl, 'original:', originalAudioUrl)
+            if (streamShown) {
+              // Já está tocando o stream ao vivo — preenche só os campos silenciosos
+              // (duração real da barra + letra) SEM trocar preview_url (não corta a escuta).
+              setResultData(prev => prev ? {
+                ...prev,
+                original_url: prev.original_url || row.original_audio_url || null,
+                lyrics: prev.lyrics || row.final_lyrics || null,
+              } : prev)
+              console.log('[HC] ✅ PREVIEW_SENT (pós-stream) — corte real pronto, mantendo a escuta')
+            } else {
+              previewAudioUrl = row.preview_audio_url || null
+              console.log('[HC] ✅ PREVIEW_SENT! preview:', previewAudioUrl, 'original:', originalAudioUrl)
+            }
             break
           }
           // NOVO: cookie expirou → backend tá retentando automaticamente em ~10min
@@ -2487,6 +2527,18 @@ export default function App() {
       }
 
       setTimeout(() => {
+        if (streamShown) {
+          // Prévia já exibida em streaming (cliente pode estar ouvindo AGORA).
+          // NÃO reconstruir o resultData — isso trocaria o src e cortaria a escuta.
+          // Só completa os campos silenciosos que ainda faltarem.
+          setResultData(prev => prev ? {
+            ...prev,
+            original_url: prev.original_url || orderData.original_audio_url || null,
+            lyrics: prev.lyrics || orderData.final_lyrics || null,
+          } : prev)
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+          return
+        }
         const finalPreview = previewAudioUrl || orderData.preview_audio_url || null
         const finalOriginal = originalAudioUrl || orderData.original_audio_url || null
         const rd = {
