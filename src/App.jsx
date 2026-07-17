@@ -667,6 +667,33 @@ function MiniPlayer({ src, capSec }) {
   )
 }
 
+/* Espera ANIMADA "estúdio finalizando" — Minhas Músicas, quando o cliente pagou
+   durante o streaming e a música completa ainda está saindo. Contagem regressiva
+   de 2:00 (ancorada no paid_at) + equalizer animado + aviso de e-mail. */
+function StudioFinishingCard({ paidAt }) {
+  const TOTAL = 120
+  const base = paidAt ? new Date(paidAt).getTime() : Date.now()
+  const calc = () => Math.max(0, TOTAL - Math.floor((Date.now() - base) / 1000))
+  const [left, setLeft] = useState(calc)
+  useEffect(() => {
+    const id = setInterval(() => setLeft(calc()), 1000)
+    return () => clearInterval(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [base])
+  const mm = Math.floor(left / 60), ss = left % 60
+  return (
+    <div className="studio-finishing" aria-live="polite">
+      <div className="studio-finishing-eq" aria-hidden="true">
+        {Array.from({ length: 9 }).map((_, i) => <span key={i} style={{ animationDelay: `${(i % 5) * 0.11}s` }} />)}
+      </div>
+      <strong className="studio-finishing-title">🎚️ Últimos toques no estúdio…</strong>
+      <p className="studio-finishing-sub">Sua música completa está sendo finalizada com todo o carinho.</p>
+      <div className="studio-finishing-timer">{left > 0 ? `${mm}:${String(ss).padStart(2, '0')}` : 'quase lá…'}</div>
+      <p className="studio-finishing-note">Ela aparece <strong>aqui sozinha</strong> — e você também recebe por <strong>e-mail</strong> assim que ficar pronta 💌</p>
+    </div>
+  )
+}
+
 /* Depoimentos · prova real abaixo do CTA na tela de prévia.
    Reusa as músicas de espera (m1/m2/m3) como áudio dos testimonials. */
 const RESULT_TESTIMONIALS = [
@@ -1107,10 +1134,8 @@ function MyOrdersView({ customer, orders, onBack, onNew, onOpenOrder, onPayPendi
             {showNewLayout && <div className="my-order-vgroup my-order-vgroup--new">✨ Suas versões novas</div>}
             {versions.length === 0 ? (
               // Pagou durante o streaming e a música completa ainda está saindo.
-              // O poll (8s) atualiza sozinho e troca este aviso pelos players.
-              <div className="my-order-videogen" aria-live="polite">
-                🎵 Sua música completa está sendo finalizada — fica pronta em <strong>até 2 minutos</strong> e aparece aqui sozinha, sem precisar atualizar 💛
-              </div>
+              // O poll (8s) atualiza sozinho e troca esta espera animada pelos players.
+              <StudioFinishingCard paidAt={o.paid_at} />
             ) : versions.map((url, i) => renderVersion(
               url, `n${i}`,
               showNewLayout ? `Nova ${i + 1}` : (versions.length > 1 ? `Versão ${i + 1}` : 'Sua música'),
@@ -1777,12 +1802,22 @@ export default function App() {
   const _devOrders = (() => {
     try { return new URLSearchParams(window.location.search).get('devOrders') === '1' } catch (_) { return false }
   })()
+  // Deep-link ?tel (abre Minhas Músicas). ?paid=1 = veio do redirect pós-pagamento.
+  const _hasTel = (() => {
+    try { const p = new URLSearchParams(window.location.search); return !!(p.get('tel') || p.get('phone')) } catch (_) { return false }
+  })()
+  const _telPaid = (() => {
+    try { return new URLSearchParams(window.location.search).get('paid') === '1' } catch (_) { return false }
+  })()
   const [view, setView] = useState(
     _devError ? 'error'
     : _devOrders ? 'my-orders'
     : _devProgress != null ? 'progress'
     : (_devResult ? 'result' : 'landing')
   )
+  // Overlay "carregando minhas músicas" durante o deep-link ?tel — evita o FLASH
+  // da tela de resultado/prévia no reload pós-pagamento. Some quando a lista carrega.
+  const [telLoading, setTelLoading] = useState(_hasTel)
   const [ctaVisible, setCtaVisible] = useState(false)
   const [toastVisible, setToastVisible] = useState(false)
   const [toastData, setToastData] = useState({ initials: 'RO', name: 'Rafael Oliveira', time: '1 min' })
@@ -1875,8 +1910,10 @@ export default function App() {
   // ele cairia na landing perdendo a referência ao pedido. Inngest é durável
   // (continua gerando), então só precisamos sincronizar a UI.
   useEffect(() => {
-    // Dev flags têm prioridade — não atrapalha quem está testando algo específico
-    if (_devError || _devOrders || _devResult || _devProgress != null) return
+    // Dev flags têm prioridade — não atrapalha quem está testando algo específico.
+    // _hasTel: veio do deep-link (ex: redirect pós-pagamento) → NÃO mostra o
+    // resume (tela de resultado) pra não piscar antes do Minhas Músicas.
+    if (_devError || _devOrders || _devResult || _devProgress != null || _hasTel) return
     // Boot inicial: view sempre começa 'landing' (a menos que dev flag), então
     // este useEffect só roda 1x. As deps vazias forçam isso.
     const co = loadCurrentOrder()
@@ -2061,7 +2098,7 @@ export default function App() {
     const tel = params.get('tel') || params.get('phone')
     if (!tel) return
     const digits = String(tel).replace(/\D/g, '')
-    if (digits.length < 10) return
+    if (digits.length < 10) { setTelLoading(false); return }
     window.history.replaceState({}, '', window.location.pathname)
     ;(async () => {
       try {
@@ -2072,7 +2109,7 @@ export default function App() {
         setShowCustomerBanner(true)
         setView('my-orders')
         window.scrollTo({ top: 0 })
-      } catch (_) {}
+      } catch (_) {} finally { setTelLoading(false) }
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -4124,12 +4161,34 @@ export default function App() {
           // Sem telefone (raro), cai no /p/ do pedido pago (sempre mostra a música).
           setTimeout(() => {
             try {
-              if (phone && phone.length >= 10) window.location.href = `/?tel=${phone}`
+              if (phone && phone.length >= 10) window.location.href = `/?tel=${phone}&paid=1`
               else window.location.href = `/p/${oid}`
             } catch (_) {}
           }, 1200)
         }}
       />
+
+      {/* ── OVERLAY do deep-link ?tel — cobre o reload até Minhas Músicas carregar
+           (mata o flash da tela de resultado/prévia no redirect pós-pagamento) ── */}
+      {telLoading && (
+        <div className="pay-overlay">
+          <div className="pay-card">
+            {_telPaid ? (
+              <>
+                <div className="pay-emoji success"><IconCheckCheck s={44} /></div>
+                <div className="pay-title">Pagamento confirmado!</div>
+                <div className="pay-sub">Carregando sua música completa 🎶💜</div>
+                <div className="spinner-lg" />
+              </>
+            ) : (
+              <>
+                <div className="spinner-lg" />
+                <div className="pay-title">Carregando suas músicas…</div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── RETORNO DO PAGAMENTO (InfinitePay) ── */}
       {payReturn && (
