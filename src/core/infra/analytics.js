@@ -47,6 +47,20 @@ export async function trackPurchase(orderId) {
   const params = { value: v, currency: 'BRL' }
   const options = orderId ? { eventID: `purchase_${orderId}` } : undefined
   track('Purchase', params, false, options)
+
+  // Google Ads — conversão de Compra (AW-16541781263). Dispara com VALOR + moeda
+  // e transaction_id = orderId (dedup: se a página recarregar, o Google não conta
+  // 2x a mesma venda). Sem isso o snippet padrão contaria valor 0 e duplicaria.
+  try {
+    if (typeof window !== 'undefined' && window.gtag) {
+      window.gtag('event', 'conversion', {
+        send_to: 'AW-16541781263/n-KvCLz-ntQcEI-a3s89',
+        value: v,
+        currency: 'BRL',
+        transaction_id: orderId || '',
+      })
+    }
+  } catch (_) {}
 }
 
 // Le cookie pelo nome. Retorna '' se nao existir ou se DOM nao disponivel.
