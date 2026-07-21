@@ -39,6 +39,11 @@ export async function trackPurchase(orderId) {
   if (!v) {
     try { v = Number(localStorage.getItem('hc_pay_value')) || 0 } catch (_) {}
   }
+  // 🔒 NUNCA disparar 0: se backend E localStorage falharam (ex: compra pelo e-mail
+  // de recuperação em device novo), o Pixel iria com valor 0 e o Facebook, ao
+  // deduplicar com o CAPI (mesmo event_id), ficaria com o 0 → subconta a receita.
+  // Preço padrão atual = 29,90 (todas as vendas). Melhor errar pra cima que pra 0.
+  if (!v || v <= 0) v = 29.90
   const params = { value: v, currency: 'BRL' }
   const options = orderId ? { eventID: `purchase_${orderId}` } : undefined
   track('Purchase', params, false, options)
