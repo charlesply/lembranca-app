@@ -27,11 +27,12 @@ export function track(event, params, custom, options) {
 // Fallback pra localStorage só pra continuar disparando mesmo se backend cair.
 export async function trackPurchase(orderId) {
   let v = 0
+  let order = null
   // Source-of-truth: o que o backend gravou em payment_amount no Supabase.
   if (orderId) {
     try {
-      const o = await apiGet(`/api/order/${orderId}/status`, { timeout: 5000 })
-      const fromServer = Number(o?.payment_amount)
+      order = await apiGet(`/api/order/${orderId}/status`, { timeout: 5000 })
+      const fromServer = Number(order?.payment_amount)
       if (Number.isFinite(fromServer) && fromServer > 0) v = fromServer
     } catch (_) {}
   }
@@ -47,6 +48,24 @@ export async function trackPurchase(orderId) {
   const params = { value: v, currency: 'BRL' }
   const options = orderId ? { eventID: `purchase_${orderId}` } : undefined
   track('Purchase', params, false, options)
+
+  // Enhanced Conversions (Google Ads): manda telefone (do pedido) + e-mail (local)
+  // como user_data — o gtag hasheia sozinho (SHA-256) e o Google casa MAIS
+  // conversões (recupera as que o clique client-side perde). Só vale de verdade
+  // com o toggle "Conversões otimizadas" LIGADO na conta do Google Ads.
+  try {
+    if (typeof window !== 'undefined' && window.gtag) {
+      const ud = {}
+      const ph = String((order && order.phone) || '').replace(/\D/g, '')
+      if (ph.length >= 10) ud.phone_number = '+' + (ph.startsWith('55') ? ph : '55' + ph)
+      try {
+        const c = JSON.parse(localStorage.getItem('hc_customer') || '{}')
+        const em = String(c.email || '').trim().toLowerCase()
+        if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) ud.email = em
+      } catch (_) {}
+      if (ud.phone_number || ud.email) window.gtag('set', 'user_data', ud)
+    }
+  } catch (_) {}
 
   // Google Ads — conversão de Compra (AW-16541781263). Dispara com VALOR + moeda
   // e transaction_id = orderId (dedup: se a página recarregar, o Google não conta
