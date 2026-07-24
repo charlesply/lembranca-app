@@ -3,6 +3,14 @@
 // deduplicacao server-side via CAPI usando o mesmo event_id.
 import { apiGet } from './api'
 
+// Conversões de Compra do Google Ads — UMA entrada por conta de anúncio.
+// ➕ Conta nova: adiciona 'AW-<id>/<label>' aqui E o gtag('config','AW-<id>')
+// no index.html. O disparo (valor real + transaction_id) é automático.
+const GADS_CONVERSIONS = [
+  'AW-16541781263/n-KvCLz-ntQcEI-a3s89',  // conta 1
+  'AW-18347014139/5M07CJ-ggNYcEPvvxKxE',  // conta 2
+]
+
 export function track(event, params, custom, options) {
   try {
     if (typeof window !== 'undefined' && window.fbq) {
@@ -67,17 +75,21 @@ export async function trackPurchase(orderId) {
     }
   } catch (_) {}
 
-  // Google Ads — conversão de Compra (AW-16541781263). Dispara com VALOR + moeda
-  // e transaction_id = orderId (dedup: se a página recarregar, o Google não conta
-  // 2x a mesma venda). Sem isso o snippet padrão contaria valor 0 e duplicaria.
+  // Google Ads — conversão de Compra em TODAS as contas de anúncio. Dispara com
+  // VALOR + moeda e transaction_id = orderId (dedup: se a página recarregar, o
+  // Google não conta 2x a mesma venda). Os snippets padrão vêm com value fixo e
+  // transaction_id vazio — por isso montamos aqui com o valor real.
+  // ➕ Conta nova? basta adicionar o 'AW-xxxx/label' na lista + gtag('config') no index.html.
   try {
     if (typeof window !== 'undefined' && window.gtag) {
-      window.gtag('event', 'conversion', {
-        send_to: 'AW-16541781263/n-KvCLz-ntQcEI-a3s89',
-        value: v,
-        currency: 'BRL',
-        transaction_id: orderId || '',
-      })
+      for (const sendTo of GADS_CONVERSIONS) {
+        window.gtag('event', 'conversion', {
+          send_to: sendTo,
+          value: v,
+          currency: 'BRL',
+          transaction_id: orderId || '',
+        })
+      }
     }
   } catch (_) {}
 }
