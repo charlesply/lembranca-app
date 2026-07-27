@@ -93,6 +93,29 @@ export async function trackPurchase(orderId) {
       }
     }
   } catch (_) {}
+
+  // TikTok Pixel — conversão de Compra (CompletePayment) com valor real + dedup.
+  // Advanced Matching: manda email/telefone (o ttq HASHEIA sozinho, SHA-256). O
+  // event_id `purchase_{orderId}` deduplicaria com a Events API server-side (se um
+  // dia ligar). Só dispara se o ttq carregou (senão falha silenciosa no try).
+  try {
+    if (typeof window !== 'undefined' && window.ttq) {
+      try {
+        const idu = {}
+        const ph = String((order && order.phone) || '').replace(/\D/g, '')
+        if (ph.length >= 10) idu.phone_number = '+' + (ph.startsWith('55') ? ph : '55' + ph)
+        const c = JSON.parse(localStorage.getItem('hc_customer') || '{}')
+        const em = String(c.email || '').trim().toLowerCase()
+        if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) idu.email = em
+        if (idu.email || idu.phone_number) window.ttq.identify(idu)
+      } catch (_) {}
+      window.ttq.track('CompletePayment', {
+        value: v, currency: 'BRL',
+        content_type: 'product', content_id: orderId || 'musica',
+        content_name: 'Musica personalizada',
+      }, orderId ? { event_id: `purchase_${orderId}` } : undefined)
+    }
+  } catch (_) {}
 }
 
 // Le cookie pelo nome. Retorna '' se nao existir ou se DOM nao disponivel.
