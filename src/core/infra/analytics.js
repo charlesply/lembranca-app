@@ -140,6 +140,16 @@ export function captureTrackingFromURL() {
         foundAny = true
       }
     }
+    // Google Ads marca o clique com gclid/gbraid/wbraid (NÃO com utm). Se veio um
+    // desses e não há utm_source, atribuímos a google/cpc pra o tráfego aparecer no
+    // banco (e guardamos o gclid em utm_content pra conversão offline futura).
+    const gAdsId = url.searchParams.get('gclid') || url.searchParams.get('gbraid') || url.searchParams.get('wbraid')
+    if (gAdsId && !fromURL.utm_source) {
+      fromURL.utm_source = 'google'
+      fromURL.utm_medium = fromURL.utm_medium || 'cpc'
+      if (!fromURL.utm_content) fromURL.utm_content = String(gAdsId).slice(0, 200)
+      foundAny = true
+    }
     if (!foundAny) return // não mexe no localStorage
     // Merge: mantém o que já tinha + sobrescreve com o que veio na URL
     const existing = getTracking()
