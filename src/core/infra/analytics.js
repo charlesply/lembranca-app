@@ -116,6 +116,19 @@ export async function trackPurchase(orderId) {
       }, orderId ? { event_id: `purchase_${orderId}` } : undefined)
     }
   } catch (_) {}
+
+  // Kwai Pixel — conversão de Compra (evento client-side 'purchase'). Só dispara
+  // se o pixel base (kwaiq) estiver carregado no index.html; senão é no-op. A
+  // atribuição forte do Kwai é server-side (por clickid) — ver lib/kwaiCapi.js.
+  try {
+    if (typeof window !== 'undefined' && window.kwaiq) {
+      window.kwaiq.track('purchase', {
+        value: v, currency: 'BRL',
+        content_id: orderId || 'musica', content_type: 'product',
+        content_name: 'Musica personalizada',
+      })
+    }
+  } catch (_) {}
 }
 
 // Le cookie pelo nome. Retorna '' se nao existir ou se DOM nao disponivel.
@@ -146,7 +159,7 @@ export function getMetaPixelData() {
 // Idempotente: só sobrescreve se vier valor novo na URL (mais recente vence).
 // ═══════════════════════════════════════════════════════════════════════════
 
-const TRACKING_KEYS = ['utm_source', 'utm_campaign', 'utm_medium', 'utm_term', 'utm_content', 'src']
+const TRACKING_KEYS = ['utm_source', 'utm_campaign', 'utm_medium', 'utm_term', 'utm_content', 'src', 'kwai_clickid']
 const TRACKING_STORAGE_KEY = 'hc_tracking'
 
 // Captura params da URL atual e salva no localStorage. Chama 1x ao abrir o site.
@@ -172,6 +185,18 @@ export function captureTrackingFromURL() {
       fromURL.utm_source = 'google'
       fromURL.utm_medium = fromURL.utm_medium || 'cpc'
       if (!fromURL.utm_content) fromURL.utm_content = String(gAdsId).slice(0, 200)
+      foundAny = true
+    }
+    // Kwai carimba o clique com ?clickid= na URL de destino. Guardamos pra mandar
+    // no EVENT_PURCHASE server-side (Kwai atribui por clickid). Se veio clickid e
+    // não há utm_source, atribuímos a kwai/cpc pro tráfego aparecer no banco.
+    const kwaiClick = url.searchParams.get('clickid')
+    if (kwaiClick) {
+      fromURL.kwai_clickid = String(kwaiClick).slice(0, 200)
+      if (!fromURL.utm_source) {
+        fromURL.utm_source = 'kwai'
+        fromURL.utm_medium = fromURL.utm_medium || 'cpc'
+      }
       foundAny = true
     }
     if (!foundAny) return // não mexe no localStorage
