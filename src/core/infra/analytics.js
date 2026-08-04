@@ -122,7 +122,7 @@ export async function trackPurchase(orderId) {
   // atribuição forte do Kwai é server-side (por clickid) — ver lib/kwaiCapi.js.
   try {
     if (typeof window !== 'undefined' && window.kwaiq) {
-      window.kwaiq.track('purchase', {
+      window.kwaiq.instance('317839512073323').track('purchase', {
         value: v, currency: 'BRL',
         content_id: orderId || 'musica', content_type: 'product',
         content_name: 'Musica personalizada',
