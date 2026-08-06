@@ -11,7 +11,7 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { fmtBRL } from '../../../core/utils'
-import { API_URL } from '../../../core/infra'
+import { API_URL, trackKwaiAddToCart } from '../../../core/infra'
 import { PLAN_DETAILS, getPriceVariant, isTestVariant, TEST_VARIANTS } from '../constants'
 import { submitPaymentProof, checkPaymentStatus } from '../api/paymentService'
 import { fetchOrderStatus } from '../api/paymentService'
@@ -185,6 +185,8 @@ export default function PixPaymentModal({
   useEffect(() => {
     if (!open || !orderId || !selectedPlan) return
     let cancelled = false
+    // Kwai AddToCart (pixel): cliente abriu o checkout PIX = intenção de compra.
+    try { trackKwaiAddToCart() } catch (_) {}
     setBrCode(''); setQrSrc(''); setPayError(''); setNeedCpf(null); setCpfError('')
     ;(async () => {
       const res = await doCreatePix()

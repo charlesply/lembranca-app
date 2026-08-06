@@ -21,7 +21,7 @@ import {
 // Utils puros extraidos pra core/utils (refactor Fase 1)
 import { priceToNum, fmtBRL, sleep } from './core/utils'
 // Infra (analytics, api wrappers) — refactor Fase 2
-import { track, trackPurchase, getMetaPixelData, captureTrackingFromURL, getTracking } from './core/infra'
+import { track, trackPurchase, trackKwaiAddToCart, getMetaPixelData, captureTrackingFromURL, getTracking } from './core/infra'
 
 // Captura tracking (UTM + src) na primeira carga do app — antes do React montar.
 // Idempotente: só sobrescreve se vier valor novo na URL.
@@ -163,6 +163,7 @@ async function apiOrderError(id, msg) {
 }
 // PAGAMENTO (InfinitePay) — via backend, sem expor chave
 async function apiPayCreate(orderId, plan) {
+  try { trackKwaiAddToCart() } catch (_) {} // Kwai AddToCart: clicou pra gerar PIX
   // manda só o IDENTIFICADOR do plano — o preço é definido no backend (anti-adulteração)
   const r = await fetch(`${API_URL}/api/pay/create`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },

@@ -12,6 +12,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { fetchOrderStatus, createPix } from './api/paymentService'
+import { trackKwaiAddToCart } from '../../core/infra'
 import { usePixPolling } from './hooks/usePixPolling'
 import { getPriceVariant, isTestVariant, TEST_VARIANTS } from './constants'
 // Self-edit: cliente ajusta a própria prévia (1×) antes de pagar — mesmo componente
@@ -148,6 +149,7 @@ export default function PaymentPage() {
 
   const generatePix = useCallback(async () => {
     if (!id) return
+    try { trackKwaiAddToCart() } catch (_) {} // Kwai AddToCart: clicou pra gerar PIX
     setLoadingPix(true); setPix(null); setCopied(false); setCpfError('')
     try {
       const data = await createPix(id, plan, priceVariant)

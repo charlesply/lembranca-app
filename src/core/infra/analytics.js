@@ -131,6 +131,20 @@ export async function trackPurchase(orderId) {
   } catch (_) {}
 }
 
+// Kwai — evento AddToCart (pixel client-side). Chamar quando o cliente CLICA pra
+// gerar PIX (forte intenção de compra). Serve pra OTIMIZAÇÃO de campanha Kwai
+// enquanto o Purchase não junta 20 conversões. No-op se o kwaiq não carregou.
+export function trackKwaiAddToCart(value) {
+  try {
+    if (typeof window !== 'undefined' && window.kwaiq) {
+      const v = Number(value) > 0 ? Number(value) : 29.90
+      window.kwaiq.instance('317839512073323').track('addToCart', {
+        value: v, currency: 'BRL', content_type: 'product', content_name: 'Musica personalizada',
+      })
+    }
+  } catch (_) {}
+}
+
 // Le cookie pelo nome. Retorna '' se nao existir ou se DOM nao disponivel.
 function readCookie(name) {
   try {
