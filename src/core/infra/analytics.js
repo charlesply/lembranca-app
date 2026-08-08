@@ -117,12 +117,13 @@ export async function trackPurchase(orderId) {
     }
   } catch (_) {}
 
-  // Kwai Pixel — conversão de Compra (evento client-side 'purchase'). Só dispara
-  // se o pixel base (kwaiq) estiver carregado no index.html; senão é no-op. A
-  // atribuição forte do Kwai é server-side (por clickid) — ver lib/kwaiCapi.js.
+  // Kwai Pixel WEB (317838080956520) — conversão de Compra (evento client-side
+  // 'purchase'). Atribuição 100% pelo PIXEL/cookie (web), NÃO server-side: o pixel
+  // Event API foi abandonado (exigia clickid real que o Kwai não entrega na URL).
+  // Só dispara se o pixel base (kwaiq) estiver carregado no index.html; senão no-op.
   try {
     if (typeof window !== 'undefined' && window.kwaiq) {
-      window.kwaiq.instance('317839512073323').track('purchase', {
+      window.kwaiq.instance('317838080956520').track('purchase', {
         value: v, currency: 'BRL',
         content_id: orderId || 'musica', content_type: 'product',
         content_name: 'Musica personalizada',
@@ -138,7 +139,7 @@ export function trackKwaiAddToCart(value) {
   try {
     if (typeof window !== 'undefined' && window.kwaiq) {
       const v = Number(value) > 0 ? Number(value) : 29.90
-      window.kwaiq.instance('317839512073323').track('addToCart', {
+      window.kwaiq.instance('317838080956520').track('addToCart', {
         value: v, currency: 'BRL', content_type: 'product', content_name: 'Musica personalizada',
       })
     }
