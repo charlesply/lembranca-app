@@ -201,10 +201,15 @@ export function captureTrackingFromURL() {
       if (!fromURL.utm_content) fromURL.utm_content = String(gAdsId).slice(0, 200)
       foundAny = true
     }
-    // Kwai carimba o clique com ?clickid= na URL de destino. Guardamos pra mandar
-    // no EVENT_PURCHASE server-side (Kwai atribui por clickid). Se veio clickid e
-    // não há utm_source, atribuímos a kwai/cpc pro tráfego aparecer no banco.
-    const kwaiClick = url.searchParams.get('clickid')
+    // Kwai carimba o clique com um TOKEN na URL de destino (macro `callback` — nome
+    // confirmado pela API deles: valor inventado dá erro "callback字段不合法"). Guardamos
+    // pra mandar no EVENT_PURCHASE server-side (Kwai atribui por esse token). Cobrimos
+    // vários nomes de param porque o suporte não confirmou o exato: callback (oficial),
+    // clickid, ksclickid, pxsource. Se veio e não há utm_source, atribuímos kwai/cpc.
+    const kwaiClick = url.searchParams.get('callback')
+      || url.searchParams.get('clickid')
+      || url.searchParams.get('ksclickid')
+      || url.searchParams.get('pxsource')
     if (kwaiClick) {
       fromURL.kwai_clickid = String(kwaiClick).slice(0, 200)
       if (!fromURL.utm_source) {
