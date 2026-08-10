@@ -46,7 +46,6 @@ export default function CheckoutCpfBox({ honoreeName, prefilledEmail, onSubmit, 
     'Liberação na hora que o Pix cair',
     'Composição Completa (Letra + Melodia)',
     'Voz Profissional de Estúdio',
-    'Arquivo MP3 de Alta Definição',
     '1 edição grátis',
   ]
 
