@@ -21,11 +21,13 @@ import {
 // Utils puros extraidos pra core/utils (refactor Fase 1)
 import { priceToNum, fmtBRL, sleep } from './core/utils'
 // Infra (analytics, api wrappers) — refactor Fase 2
-import { track, trackPurchase, trackKwaiAddToCart, getMetaPixelData, captureTrackingFromURL, getTracking } from './core/infra'
+import { track, trackPurchase, trackKwaiAddToCart, getMetaPixelData, captureTrackingFromURL, getTracking, confirmSmsClick } from './core/infra'
 
 // Captura tracking (UTM + src) na primeira carga do app — antes do React montar.
 // Idempotente: só sobrescreve se vier valor novo na URL.
 try { captureTrackingFromURL() } catch (_) {}
+// Beacon de clique de SMS: confirma o clique REAL (carga da página) quando veio ?src=sms.
+try { confirmSmsClick() } catch (_) {}
 // Lembrança Cantada · Design System (src/components/ui)
 // Importamos os componentes TSX direto dos arquivos pra evitar resolver
 // pelo `index.js` legado que mistura JSX em arquivo .js (Vite/oxc nao

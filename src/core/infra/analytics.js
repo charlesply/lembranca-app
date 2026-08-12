@@ -227,6 +227,25 @@ export function captureTrackingFromURL() {
   } catch (_) {}
 }
 
+// Beacon de clique de SMS (carga REAL): quando a página abre com ?src=sms,
+// confirma o clique HONESTO no backend. Bot faz o 302 do /s mas NÃO renderiza
+// esta página, então nunca dispara isso → só humano conta. Idempotente no backend.
+export function confirmSmsClick() {
+  try {
+    if (typeof window === 'undefined') return
+    const p = new URLSearchParams(window.location.search)
+    if (p.get('src') !== 'sms') return
+    const m = window.location.pathname.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)
+    if (!m) return
+    fetch('https://suno-api-novo.bvph.uk/api/sms/click-confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: m[0] }),
+      keepalive: true,
+    }).catch(() => {})
+  } catch (_) {}
+}
+
 // Retorna o tracking salvo (objeto) ou {} se nada.
 export function getTracking() {
   try {
