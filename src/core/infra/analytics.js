@@ -8,6 +8,7 @@ import { apiGet } from './api'
 // no index.html. O disparo (valor real + transaction_id) é automático.
 const GADS_CONVERSIONS = [
   'AW-16541781263/n-KvCLz-ntQcEI-a3s89',  // conta 1
+  'AW-16541781263/JEK4CMOJxeUcEI-a3s89',  // conta 1 — 2ª conversão de compra
   'AW-18347014139/5M07CJ-ggNYcEPvvxKxE',  // conta 2
   'AW-17220044703/82QICMT3ttccEJ-PlJNA',  // conta 3
 ]
